@@ -1,0 +1,10 @@
+# Зависимости, установленные через npm
+/node_modules
+
+# Результаты сборки Electron и готовые .exe файлы
+/release-builds
+/dist
+
+# Временные и служебные файлы
+npm-debug.log
+.DS_Store

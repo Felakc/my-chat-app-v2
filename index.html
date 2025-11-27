@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <title>Chat App (Secure)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <style>
+        body { margin: 0; padding-bottom: 3rem; font-family: sans-serif; }
+        #messages { list-style-type: none; margin: 0; padding: 0; }
+        #messages li { padding: 0.5rem 1rem; }
+        #messages li:nth-child(odd) { background: #efefef; }
+        #chat { background: #333; padding: 0.25rem; display: flex; box-sizing: border-box; }
+        #chat > input, #chat > button { border: none; padding: 0.5rem; margin: 0.25rem; }
+        #chat > input:focus { outline: none; }
+        #chat > button { background: #1a73e8; color: white; }
+        .hidden { display: none; }
+        #auth-form { padding: 20px; border: 1px solid #ccc; max-width: 400px; margin: 50px auto; text-align: center; }
+        #auth-form input { margin: 10px 0; padding: 10px; width: 80%; display: block; margin-left: auto; margin-right: auto; }
+        #auth-form button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #messages img { max-width: 100%; height: auto; border-radius: 5px; margin-top: 5px; } /* Стиль для картинок */
+    </style>
+</head>
+<body>
+    <ul id="messages"></ul>
+
+    <form id="auth-form" action="">
+        <h2>Вход / Регистрация</h2>
+        <input id="auth-username" autocomplete="off" placeholder="Имя пользователя" required />
+        <input id="auth-password" type="password" autocomplete="off" placeholder="Пароль" required />
+        <button id="register-btn" type="button">Регистрация</button>
+        <button id="login-btn" type="submit">Войти</button>
+        <p id="auth-message" style="color: red;"></p>
+    </form>
+
+    <form id="chat" action="" class="hidden">
+        <input id="username" autocomplete="off" placeholder="Ваше Имя" style="width: 100px;" readonly />
+        <input id="receiver" autocomplete="off" placeholder="Получатель (для ЛС)" style="width: 150px;" />
+        
+        <input type="file" id="file-input" accept="image/*" title="Отправить картинку" style="width: 80px; padding: 0;">
+        
+        <input id="m" autocomplete="off" placeholder="Сообщение..." style="flex-grow: 1;" />
+        <button type="submit">Отправить</button>
+    </form>
+    
+    <script src="/socket.io/socket.io.js"></script> 
+    
+    <script>
+        const socket = io(); 
+
+        // Элементы аутентификации
+        const authForm = document.getElementById('auth-form');
+        const authUsernameInput = document.getElementById('auth-username');
+        const authPasswordInput = document.getElementById('auth-password');
+        const registerBtn = document.getElementById('register-btn');
+        const authMessage = document.getElementById('auth-message');
+
+        // Элементы чата
+        const chatForm = document.getElementById('chat');
+        const inputMessage = document.getElementById('m');
+        const inputReceiver = document.getElementById('receiver'); 
+        const inputChatUsername = document.getElementById('username'); 
+        const fileInput = document.getElementById('file-input'); // <-- НОВЫЙ ЭЛЕМЕНТ
+        const messages = document.getElementById('messages');
+
+        let currentUsername = null; 
+        
+        // --- Логика Аутентификации (без изменений) ---
+        registerBtn.addEventListener('click', function(e) { /* ... */ });
+        authForm.addEventListener('submit', function(e) { /* ... */ });
+        socket.on('auth error', function(msg) { /* ... */ });
+        socket.on('auth message', function(msg) { /* ... */ });
+        socket.on('auth success', function(data) { /* ... */ socket.emit('authenticate', currentUsername); });
+        
+        // --- Логика Чата ---
+        
+        // ОБНОВЛЕННАЯ ФУНКЦИЯ отображения сообщения
+        function displayMessage(data) {
+            const item = document.createElement('li');
+            const sender = data.sender;
+            const msg = data.msg;
+            
+            // Если есть данные файла (Base64), отображаем картинку
+            if (data.fileData) {
+                const img = document.createElement('img');
+                img.src = data.fileData; // Base64 данные
+                
+                item.innerHTML = `<strong>${sender}:</strong> `;
+                item.appendChild(img);
+                
+                // Если есть и текст, добавляем его под картинкой
+                if (msg) {
+                     const textNode = document.createElement('p');
+                     textNode.textContent = msg;
+                     item.appendChild(textNode);
+                }
+                
+            } else if (msg) {
+                // Стандартное текстовое сообщение
+                item.innerHTML = `<strong>${sender}:</strong> ${msg}`;
+            }
+            
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        // ОБНОВЛЕННАЯ ФУНКЦИЯ отправки
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault(); 
+            
+            const message = inputMessage.value.trim();
+            const receiver = inputReceiver.value.trim(); 
+            const file = fileInput.files[0]; // Получаем выбранный файл
+
+            // Если есть файл, отправляем его как Base64
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const fileData = e.target.result; 
+                    
+                    const data = {
+                        sender: currentUsername,
+                        receiver: receiver || null, 
+                        msg: message || null, 
+                        fileData: fileData,  // Base64 данные
+                        fileName: file.name
+                    };
+                    
+                    socket.emit('chat message', data); 
+                    fileInput.value = ''; // Очистка поля
+                    inputMessage.value = ''; 
+                    inputReceiver.value = ''; 
+                };
+                reader.readAsDataURL(file); // Считываем файл как Base64
+                
+            } else if (message && currentUsername) {
+                // Стандартная отправка текста, если файла нет
+                const data = {
+                    sender: currentUsername,
+                    receiver: receiver || null, 
+                    msg: message,
+                    fileData: null 
+                };
+                socket.emit('chat message', data); 
+                inputMessage.value = ''; 
+                inputReceiver.value = ''; 
+            }
+        });
+        
+        socket.on('chat message', displayMessage);
+
+        socket.on('history', function(history) {
+            messages.innerHTML = ''; 
+            history.forEach(displayMessage);
+            displayMessage({ sender: '[СИСТЕМА]', msg: '--- История загружена ---' });
+        });
+    </script>
+</body>
+</html>
