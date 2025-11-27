@@ -16,7 +16,7 @@
         #auth-form { padding: 20px; border: 1px solid #ccc; max-width: 400px; margin: 50px auto; text-align: center; }
         #auth-form input { margin: 10px 0; padding: 10px; width: 80%; display: block; margin-left: auto; margin-right: auto; }
         #auth-form button { padding: 10px 20px; margin: 5px; cursor: pointer; }
-        #messages img { max-width: 100%; height: auto; border-radius: 5px; margin-top: 5px; } /* Стиль для картинок */
+        #messages img { max-width: 100%; height: auto; border-radius: 5px; margin-top: 5px; } 
     </style>
 </head>
 <body>
@@ -45,20 +45,20 @@
     
     <script>
         // 🚨🚨🚨 ВАЖНО: ВСТАВЬТЕ СЮДА ВАШ НОВЫЙ URL СЕРВИСА RENDER 🚨🚨🚨
+        // ПРИМЕР: 'https://my-chat-app-v2-uzje.onrender.com'
         const SERVER_URL = 'https://my-chat-app-v2-uzje.onrender.com'; 
         
         const socket = io(SERVER_URL, {
-            transports: ['websocket'] // Принудительное использование WebSocket для стабильности
+            transports: ['websocket'] 
         }); 
 
-        // Элементы аутентификации
+        // Элементы аутентификации и чата... (оставлены для ясности)
+
         const authForm = document.getElementById('auth-form');
         const authUsernameInput = document.getElementById('auth-username');
         const authPasswordInput = document.getElementById('auth-password');
         const registerBtn = document.getElementById('register-btn');
         const authMessage = document.getElementById('auth-message');
-
-        // Элементы чата
         const chatForm = document.getElementById('chat');
         const inputMessage = document.getElementById('m');
         const inputReceiver = document.getElementById('receiver'); 
@@ -84,7 +84,6 @@
             const username = authUsernameInput.value.trim();
             const password = authPasswordInput.value;
             
-            // Избегаем двойного срабатывания, если нажата "Регистрация"
             if (e.submitter && e.submitter.id === 'register-btn') return;
             
             if (username && password) {
@@ -121,7 +120,6 @@
             const sender = data.sender;
             const msg = data.msg;
             
-            // Если есть данные файла (Base64), отображаем картинку
             if (data.fileData) {
                 const img = document.createElement('img');
                 img.src = data.fileData; 
@@ -136,7 +134,6 @@
                 }
                 
             } else if (msg) {
-                // Стандартное текстовое сообщение
                 item.innerHTML = `<strong>${sender}:</strong> ${msg}`;
             }
             
@@ -144,7 +141,6 @@
             window.scrollTo(0, document.body.scrollHeight);
         }
 
-        // ОБНОВЛЕННАЯ ФУНКЦИЯ отправки
         chatForm.addEventListener('submit', function(e) {
             e.preventDefault(); 
             
@@ -152,7 +148,6 @@
             const receiver = inputReceiver.value.trim(); 
             const file = fileInput.files[0]; 
 
-            // Если есть файл, отправляем его как Base64
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -174,7 +169,6 @@
                 reader.readAsDataURL(file); 
                 
             } else if (message && currentUsername) {
-                // Стандартная отправка текста, если файла нет
                 const data = {
                     sender: currentUsername,
                     receiver: receiver || null, 
