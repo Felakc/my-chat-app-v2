@@ -52,8 +52,7 @@
             transports: ['websocket'] 
         }); 
 
-        // Элементы аутентификации и чата... (оставлены для ясности)
-
+        // Инициализация элементов
         const authForm = document.getElementById('auth-form');
         const authUsernameInput = document.getElementById('auth-username');
         const authPasswordInput = document.getElementById('auth-password');
@@ -68,7 +67,7 @@
 
         let currentUsername = null; 
         
-        // --- Логика Аутентификации ---
+        // --- Логика Аутентификации (без изменений) ---
         
         registerBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -80,7 +79,7 @@
         });
 
         authForm.addEventListener('submit', function(e) {
-            e.preventDefault(); // <-- ГЛАВНОЕ: Предотвращает перезагрузку страницы
+            e.preventDefault(); 
             const username = authUsernameInput.value.trim();
             const password = authPasswordInput.value;
             
@@ -141,6 +140,7 @@
             window.scrollTo(0, document.body.scrollHeight);
         }
 
+        // ОБНОВЛЕННАЯ ФУНКЦИЯ отправки с обработкой ошибок File Reader
         chatForm.addEventListener('submit', function(e) {
             e.preventDefault(); 
             
@@ -150,6 +150,8 @@
 
             if (file) {
                 const reader = new FileReader();
+                
+                // 1. УСПЕШНАЯ ЗАГРУЗКА
                 reader.onload = function(e) {
                     const fileData = e.target.result; 
                     
@@ -166,6 +168,15 @@
                     inputMessage.value = ''; 
                     inputReceiver.value = ''; 
                 };
+                
+                // 2. ОБРАБОТКА ОШИБОК
+                reader.onerror = function(e) {
+                    console.error('Ошибка при чтении файла:', e.target.error);
+                    alert('Не удалось прочитать файл. Возможно, он слишком большой.');
+                    fileInput.value = '';
+                };
+
+                // 3. ЗАПУСК ПРОЦЕССА
                 reader.readAsDataURL(file); 
                 
             } else if (message && currentUsername) {
