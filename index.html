@@ -44,7 +44,12 @@
     <script src="/socket.io/socket.io.js"></script> 
     
     <script>
-        const socket = io(); 
+        // 🚨🚨🚨 ВАЖНО: ВСТАВЬТЕ СЮДА ВАШ НОВЫЙ URL СЕРВИСА RENDER 🚨🚨🚨
+        const SERVER_URL = 'https://my-chat-app-v2-uzje.onrender.com'; 
+        
+        const socket = io(SERVER_URL, {
+            transports: ['websocket'] // Принудительное использование WebSocket для стабильности
+        }); 
 
         // Элементы аутентификации
         const authForm = document.getElementById('auth-form');
@@ -58,21 +63,59 @@
         const inputMessage = document.getElementById('m');
         const inputReceiver = document.getElementById('receiver'); 
         const inputChatUsername = document.getElementById('username'); 
-        const fileInput = document.getElementById('file-input'); // <-- НОВЫЙ ЭЛЕМЕНТ
+        const fileInput = document.getElementById('file-input'); 
         const messages = document.getElementById('messages');
 
         let currentUsername = null; 
         
-        // --- Логика Аутентификации (без изменений) ---
-        registerBtn.addEventListener('click', function(e) { /* ... */ });
-        authForm.addEventListener('submit', function(e) { /* ... */ });
-        socket.on('auth error', function(msg) { /* ... */ });
-        socket.on('auth message', function(msg) { /* ... */ });
-        socket.on('auth success', function(data) { /* ... */ socket.emit('authenticate', currentUsername); });
+        // --- Логика Аутентификации ---
+        
+        registerBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const username = authUsernameInput.value.trim();
+            const password = authPasswordInput.value;
+            if (username && password) {
+                socket.emit('register', { username, password });
+            }
+        });
+
+        authForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // <-- ГЛАВНОЕ: Предотвращает перезагрузку страницы
+            const username = authUsernameInput.value.trim();
+            const password = authPasswordInput.value;
+            
+            // Избегаем двойного срабатывания, если нажата "Регистрация"
+            if (e.submitter && e.submitter.id === 'register-btn') return;
+            
+            if (username && password) {
+                socket.emit('login', { username, password });
+            }
+        });
+
+        socket.on('auth error', function(msg) {
+            authMessage.textContent = msg;
+            authMessage.style.color = 'red';
+        });
+
+        socket.on('auth message', function(msg) {
+            authMessage.textContent = msg;
+            authMessage.style.color = 'green';
+        });
+
+        socket.on('auth success', function(data) {
+            currentUsername = data.username;
+            authForm.classList.add('hidden');
+            chatForm.classList.remove('hidden');
+            inputChatUsername.value = currentUsername;
+            
+            authMessage.textContent = `Добро пожаловать, ${currentUsername}!`;
+            authMessage.style.color = 'blue';
+
+            socket.emit('authenticate', currentUsername);
+        });
         
         // --- Логика Чата ---
         
-        // ОБНОВЛЕННАЯ ФУНКЦИЯ отображения сообщения
         function displayMessage(data) {
             const item = document.createElement('li');
             const sender = data.sender;
@@ -81,12 +124,11 @@
             // Если есть данные файла (Base64), отображаем картинку
             if (data.fileData) {
                 const img = document.createElement('img');
-                img.src = data.fileData; // Base64 данные
+                img.src = data.fileData; 
                 
                 item.innerHTML = `<strong>${sender}:</strong> `;
                 item.appendChild(img);
                 
-                // Если есть и текст, добавляем его под картинкой
                 if (msg) {
                      const textNode = document.createElement('p');
                      textNode.textContent = msg;
@@ -108,7 +150,7 @@
             
             const message = inputMessage.value.trim();
             const receiver = inputReceiver.value.trim(); 
-            const file = fileInput.files[0]; // Получаем выбранный файл
+            const file = fileInput.files[0]; 
 
             // Если есть файл, отправляем его как Base64
             if (file) {
@@ -120,16 +162,16 @@
                         sender: currentUsername,
                         receiver: receiver || null, 
                         msg: message || null, 
-                        fileData: fileData,  // Base64 данные
+                        fileData: fileData,  
                         fileName: file.name
                     };
                     
                     socket.emit('chat message', data); 
-                    fileInput.value = ''; // Очистка поля
+                    fileInput.value = ''; 
                     inputMessage.value = ''; 
                     inputReceiver.value = ''; 
                 };
-                reader.readAsDataURL(file); // Считываем файл как Base64
+                reader.readAsDataURL(file); 
                 
             } else if (message && currentUsername) {
                 // Стандартная отправка текста, если файла нет
