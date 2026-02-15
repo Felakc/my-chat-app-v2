@@ -2,37 +2,24 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Pro Max</title>
+    <title>Messenger Fix</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
-        
+        body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
         #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
-        #auth-box { background: white; padding: 25px; border-radius: 12px; width: 300px; text-align: center; }
-        
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 15px; background: #0084ff; color: white; display: flex; justify-content: space-between; align-items: center; }
-        .section-title { padding: 8px 15px; background: #f8f9fa; font-size: 11px; font-weight: bold; color: #666; border-bottom: 1px solid #eee; }
-        
-        .item { padding: 10px 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; font-size: 14px; }
-        .item:hover { background: #f0f7ff; }
-        .item input { margin-right: 10px; }
-        .btn-small { font-size: 10px; padding: 2px 5px; cursor: pointer; opacity: 0.6; }
-        .btn-small:hover { opacity: 1; }
-
+        #auth-box { background: white; padding: 20px; border-radius: 12px; width: 300px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #sidebar { width: 260px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
         #main-chat { flex: 1; display: flex; flex-direction: column; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; background: #e5ddd5; display: flex; flex-direction: column; }
-        
-        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 75%; position: relative; }
+        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 10px; background: white; align-self: flex-start; max-width: 70%; position: relative; }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .msg b { font-size: 11px; display: block; color: #555; margin-bottom: 4px; }
-        .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
-        .del-msg { color: red; cursor: pointer; margin-left: 8px; display: none; }
-        .msg:hover .del-msg { display: inline; }
-
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; align-items: center; }
+        .msg b { font-size: 11px; display: block; color: #555; }
+        .del-btn { color: red; cursor: pointer; font-size: 12px; margin-left: 10px; }
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; }
         #m-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-        .icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; }
+        .item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .item:hover { background: #f0f7ff; }
     </style>
 </head>
 <body>
@@ -40,32 +27,29 @@
 <div id="auth-screen">
     <div id="auth-box">
         <h3>Messenger</h3>
-        <input type="text" id="u-name" placeholder="Никнейм" style="width:100%; padding:10px; margin-bottom:10px;">
+        <input type="text" id="u-name" placeholder="Ник" style="width:100%; padding:10px; margin-bottom:10px;">
         <input type="password" id="u-pass" placeholder="Пароль" style="width:100%; padding:10px; margin-bottom:10px;">
-        <button onclick="auth('login')" style="background:#0084ff; color:white; border:none; padding:10px; width:100%; border-radius:8px; cursor:pointer;">Войти</button>
-        <button onclick="auth('register')" style="background:none; border:none; color:#42b72a; margin-top:10px; cursor:pointer;">Регистрация</button>
+        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px;">Войти</button>
+        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Регистрация</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div class="sidebar-header">
-        <span>Чаты</span>
-        <button onclick="makeGroup()" style="background:white; color:#0084ff; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">+ Группа</button>
-    </div>
-    <div class="section-title">ГРУППЫ</div>
+    <div class="sidebar-header">Чаты <button onclick="makeGroup()" style="float:right">+</button></div>
+    <div style="font-size:10px; padding:5px; background:#f9f9f9;">ГРУППЫ</div>
     <div id="group-list"></div>
-    <div class="section-title">КОНТАКТЫ</div>
+    <div style="font-size:10px; padding:5px; background:#f9f9f9;">КОНТАКТЫ</div>
     <div id="user-list"></div>
 </div>
 
 <div id="main-chat">
-    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold;">Выберите чат</div>
+    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd;">Выбери чат</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="file" id="file-input" style="display:none" accept="image/*" onchange="sendFile(this)">
-        <button class="icon-btn" onclick="document.getElementById('file-input').click()">📎</button>
-        <input type="text" id="m-input" placeholder="Сообщение...">
-        <button onclick="send()" style="background:#0084ff; color:white; border:none; padding:10px 20px; border-radius:20px; cursor:pointer;">></button>
+        <input type="file" id="f-in" style="display:none" onchange="sendFile(this)">
+        <button onclick="document.getElementById('f-in').click()">📎</button>
+        <input type="text" id="m-input" placeholder="Начни писать...">
+        <button onclick="send()">></button>
     </div>
 </div>
 
@@ -75,29 +59,32 @@
     let myName = '', currentRoom = '';
 
     async function auth(type) {
-        const u = document.getElementById('u-name').value;
-        const p = document.getElementById('u-pass').value;
-        const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
+        const username = document.getElementById('u-name').value;
+        const password = document.getElementById('u-pass').value;
+        const res = await fetch('/'+type, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({username, password})
+        });
         const data = await res.json();
-        if(data.status==='ok') {
-            myName = u; document.getElementById('auth-screen').style.display='none';
-            socket.emit('store-user', myName); loadAll();
-        }
+        if(data.status === 'ok') {
+            myName = username;
+            document.getElementById('auth-screen').style.display = 'none';
+            socket.emit('store-user', myName);
+            loadAll();
+        } else { alert("Ошибка!"); }
     }
 
     async function loadAll() {
-        const hRes = await fetch('/hidden-users/' + myName);
-        const hidden = await hRes.json();
-        
         const uRes = await fetch('/users');
         const users = await uRes.json();
         const uList = document.getElementById('user-list');
         uList.innerHTML = '';
         users.forEach(u => {
-            if(u.username === myName || hidden.includes(u.username)) return;
+            if(u.username === myName) return;
             const div = document.createElement('div');
             div.className = 'item';
-            div.innerHTML = `<input type="checkbox" class="g-select" value="${u.username}"><span onclick="openPriv('${u.username}')" style="flex:1">${u.username}</span><span class="btn-small" onclick="hideU('${u.username}')">🙈 Скрыть</span>`;
+            div.innerHTML = `<input type="checkbox" class="g-sel" value="${u.username}"><span onclick="openPriv('${u.username}')" style="flex:1">${u.username}</span><button onclick="hideU('${u.username}')">🙈</button>`;
             uList.appendChild(div);
         });
 
@@ -108,18 +95,25 @@
         groups.forEach(g => {
             const div = document.createElement('div');
             div.className = 'item';
-            div.innerHTML = `<span onclick="openGroup('${g._id}', '${g.name}')" style="flex:1">👥 ${g.name}</span><span class="btn-small" onclick="leaveG('${g._id}')">🚪 Выйти</span>`;
+            div.innerHTML = `<span onclick="openG('${g._id}','${g.name}')" style="flex:1">👥 ${g.name}</span><button onclick="leaveG('${g._id}')">🚪</button>`;
             gList.appendChild(div);
         });
     }
 
     function openPriv(t) { currentRoom = [myName, t].sort().join('_'); startChat('Чат: '+t); }
-    function openGroup(id, n) { currentRoom = id; startChat(n); }
-    function startChat(t) { document.getElementById('chat-header').innerText = t; document.getElementById('messages').innerHTML = ''; socket.emit('join room', currentRoom); }
+    function openG(id, n) { currentRoom = id; startChat(n); }
 
-    async function send() {
-        const msg = document.getElementById('m-input').value;
-        if(msg && currentRoom) { socket.emit('chat message', { room: currentRoom, msg, sender: myName, type: 'text' }); document.getElementById('m-input').value = ''; }
+    function startChat(t) {
+        document.getElementById('chat-header').innerText = t;
+        document.getElementById('messages').innerHTML = '';
+        socket.emit('join room', currentRoom);
+    }
+
+    function send() {
+        const val = document.getElementById('m-input').value;
+        if(!val || !currentRoom) return;
+        socket.emit('chat message', { room: currentRoom, msg: val, sender: myName, type: 'text' });
+        document.getElementById('m-input').value = '';
     }
 
     function sendFile(input) {
@@ -129,25 +123,23 @@
     }
 
     async function delMsg(id) {
-        if(confirm("Удалить?")) { await fetch('/messages/'+id, {method:'DELETE'}); socket.emit('delete-msg-client', {id, room:currentRoom}); }
+        if(!confirm("Удалить?")) return;
+        await fetch('/messages/'+id, {method:'DELETE'});
+        socket.emit('delete-msg-client', {id, room: currentRoom});
     }
 
     async function leaveG(id) {
-        if(confirm("Выйти?")) { await fetch('/leave-group', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:id, username:myName})}); loadAll(); }
-    }
-
-    async function hideU(t) {
-        if(confirm("Скрыть?")) { await fetch('/hide-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({owner:myName, hiddenUsername:t})}); loadAll(); }
+        await fetch('/leave-group', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:id, username:myName})});
+        loadAll();
     }
 
     async function makeGroup() {
-        const selected = Array.from(document.querySelectorAll('.g-select:checked')).map(cb => cb.value);
-        const gName = prompt("Название группы:");
-        if(gName && selected.length) {
-            selected.push(myName);
-            await fetch('/create-group', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:gName, members:selected})});
-            loadAll();
-        }
+        const sel = Array.from(document.querySelectorAll('.g-sel:checked')).map(c => c.value);
+        const name = prompt("Название группы:");
+        if(!name || sel.length === 0) return;
+        sel.push(myName);
+        await fetch('/create-group', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, members:sel})});
+        loadAll();
     }
 
     function render(d) {
@@ -156,8 +148,8 @@
         div.id = 'msg-'+id;
         const user = d.sender || d.username;
         div.className = 'msg ' + (user === myName ? 'me' : '');
-        let del = (user === myName && id) ? `<span class="del-msg" onclick="delMsg('${id}')">🗑</span>` : '';
-        div.innerHTML = `<b>${user}${del}</b>${d.type==='image' ? '<img src="'+(d.msg||d.text)+'" onclick="window.open(this.src)">' : (d.msg||d.text)}`;
+        let del = (user === myName && id) ? `<span class="del-btn" onclick="delMsg('${id}')">🗑</span>` : '';
+        div.innerHTML = `<b>${user}${del}</b>${d.type==='image' ? '<img src="'+(d.msg||d.text)+'" style="width:200px">' : (d.msg||d.text)}`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = 99999;
     }
@@ -166,7 +158,7 @@
     socket.on('chat history', h => h.forEach(render));
     socket.on('msg-deleted-server', id => { const el = document.getElementById('msg-'+id); if(el) el.remove(); });
     socket.on('refresh-groups', loadAll);
-    document.getElementById('m-input').onkeypress = (e) => e.key==='Enter' && send();
+    document.getElementById('m-input').onkeypress = (e) => { if(e.key==='Enter') send(); };
 </script>
 </body>
 </html>
