@@ -2,50 +2,73 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Pro</title>
+    <title>Messenger Pro v4</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
+        
+        /* Авторизация */
         #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
-        #auth-box { background: white; padding: 20px; border-radius: 10px; width: 300px; text-align: center; }
+        #auth-box { background: white; padding: 25px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .auth-btns { display: flex; gap: 10px; }
+        .auth-btns button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; }
+
+        /* Боковая панель */
         #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .section-title { padding: 10px; background: #eee; font-size: 12px; font-weight: bold; }
-        .item { padding: 10px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; align-items: center; }
-        .item:hover { background: #e7f3ff; }
-        .item input { margin-right: 10px; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; display: flex; justify-content: space-between; }
+        .section-title { padding: 8px 15px; background: #f8f9fa; font-size: 11px; color: #666; font-weight: bold; border-bottom: 1px solid #eee; }
+        .item { padding: 12px 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; transition: 0.2s; }
+        .item:hover { background: #f0f7ff; }
+        .item input { margin-right: 12px; transform: scale(1.2); }
+        .item span { flex: 1; }
+
+        /* Чат */
         #main-chat { flex: 1; display: flex; flex-direction: column; }
+        #chat-header { padding: 15px; background: white; border-bottom: 1px solid #ddd; font-weight: bold; color: #333; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; background: #e5ddd5; display: flex; flex-direction: column; }
-        .msg { margin-bottom: 8px; padding: 8px 12px; border-radius: 10px; background: white; align-self: flex-start; }
+        
+        .msg { margin-bottom: 10px; padding: 8px 14px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        #input-area { padding: 10px; display: flex; background: white; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .msg b { font-size: 11px; color: #555; display: block; margin-bottom: 2px; }
+
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; }
+        #m-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+        #send-btn { width: 45px; height: 45px; border-radius: 50%; border: none; background: #0084ff; color: white; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
     <div id="auth-box">
-        <input type="text" id="u-name" placeholder="Ник"><br><br>
-        <input type="password" id="u-pass" placeholder="Пароль"><br><br>
-        <button onclick="auth('login')">Войти</button>
-        <button onclick="auth('register')">Регистрация</button>
+        <h2>Вход</h2>
+        <input type="text" id="u-name" placeholder="Никнейм">
+        <input type="password" id="u-pass" placeholder="Пароль">
+        <div class="auth-btns">
+            <button onclick="auth('login')" style="background: #0084ff;">Войти</button>
+            <button onclick="auth('register')" style="background: #42b72a;">Создать</button>
+        </div>
+        <p id="auth-error" style="color:red; font-size:12px; margin-top:10px;"></p>
     </div>
 </div>
 
 <div id="sidebar">
-    <div style="padding:15px; background:#0084ff; color:white; font-weight:bold;">Мой Чатик</div>
-    <div class="section-title">ГРУППЫ <button onclick="makeGroup()" style="float:right">+</button></div>
+    <div class="sidebar-header">
+        <span>Messenger</span>
+        <button onclick="makeGroup()" style="background:none; border:1px solid white; color:white; border-radius:4px; cursor:pointer; font-size:11px;">+ Группа</button>
+    </div>
+    <div class="section-title">МОИ ГРУППЫ</div>
     <div id="group-list"></div>
-    <div class="section-title">ВСЕ ПОЛЬЗОВАТЕЛИ</div>
+    <div class="section-title">ВСЕ ПОЛЬЗОВАТЕЛИ (выбери для лички или группы)</div>
     <div id="user-list"></div>
 </div>
 
 <div id="main-chat">
-    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd;">Выбери чат</div>
+    <div id="chat-header">Выберите, кому написать</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="text" id="m-input" style="flex:1" placeholder="Сообщение...">
-        <button onclick="send()">></button>
+        <input type="text" id="m-input" placeholder="Введите сообщение...">
+        <button id="send-btn" onclick="send()">></button>
     </div>
 </div>
 
@@ -55,15 +78,22 @@
     let myName = '', currentRoom = '';
 
     async function auth(type) {
-        myName = document.getElementById('u-name').value;
-        const password = document.getElementById('u-pass').value;
-        const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:myName, password})});
+        const u = document.getElementById('u-name').value;
+        const p = document.getElementById('u-pass').value;
+        if(!u || !p) return;
+        const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
         const data = await res.json();
-        if(data.status==='ok') { document.getElementById('auth-screen').style.display='none'; loadAll(); }
+        if(data.status==='ok') {
+            myName = u;
+            document.getElementById('auth-screen').style.display='none';
+            loadAll();
+        } else {
+            document.getElementById('auth-error').innerText = 'Ошибка входа!';
+        }
     }
 
     async function loadAll() {
-        // Загрузка людей
+        // Люди
         const uRes = await fetch('/users');
         const users = await uRes.json();
         const uList = document.getElementById('user-list');
@@ -72,11 +102,11 @@
             if(u.username === myName) return;
             const div = document.createElement('div');
             div.className = 'item';
-            div.innerHTML = `<input type="checkbox" value="${u.username}"><span onclick="openPrivate('${u.username}')">${u.username}</span>`;
+            div.innerHTML = `<input type="checkbox" class="g-select" value="${u.username}"><span onclick="openPrivate('${u.username}')">${u.username}</span>`;
             uList.appendChild(div);
         });
 
-        // Загрузка моих групп
+        // Группы
         const gRes = await fetch('/my-groups/'+myName);
         const groups = await gRes.json();
         const gList = document.getElementById('group-list');
@@ -84,7 +114,7 @@
         groups.forEach(g => {
             const div = document.createElement('div');
             div.className = 'item';
-            div.innerText = g.name;
+            div.innerHTML = `<span>👥 ${g.name}</span>`;
             div.onclick = () => { currentRoom = g._id; startChat(g.name); };
             gList.appendChild(div);
         });
@@ -92,12 +122,12 @@
 
     function openPrivate(target) {
         currentRoom = [myName, target].sort().join('_');
-        startChat('Чат с ' + target);
+        startChat('Чат: ' + target);
     }
 
     async function makeGroup() {
-        const selected = Array.from(document.querySelectorAll('.user-select:checked, input[type=checkbox]:checked')).map(cb => cb.value);
-        if(selected.length < 1) return alert("Выбери участников");
+        const selected = Array.from(document.querySelectorAll('.g-select:checked')).map(cb => cb.value);
+        if(selected.length < 1) return alert("Выбери хотя бы одного участника галочкой");
         const gName = prompt("Название группы:");
         if(!gName) return;
         selected.push(myName);
@@ -106,7 +136,7 @@
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ name: gName, members: selected })
         });
-        loadAll(); // Обновим список
+        loadAll();
     }
 
     function startChat(title) {
@@ -123,17 +153,26 @@
         }
     }
 
-    socket.on('chat message', (d) => render(d));
-    socket.on('chat history', (h) => h.forEach(render));
-    socket.on('group-created', (g) => { if(g.members.includes(myName)) loadAll(); });
-
     function render(d) {
         const div = document.createElement('div');
-        div.className = 'msg ' + ((d.sender || d.username) === myName ? 'me' : '');
-        div.innerHTML = `<b>${d.sender || d.username}</b><br>${d.msg || d.text}`;
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = 99999;
+        const user = d.sender || d.username;
+        div.className = 'msg ' + (user === myName ? 'me' : '');
+        div.innerHTML = `<b>${user}</b>${d.msg || d.text}`;
+        const container = document.getElementById('messages');
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
     }
+
+    socket.on('chat message', render);
+    socket.on('chat history', (h) => h.forEach(render));
+    
+    // Мгновенное обновление при добавлении в группу
+    socket.on('refresh-groups', (members) => {
+        if(members.includes(myName)) loadAll();
+    });
+
+    // Отправка по Enter
+    document.getElementById('m-input').onkeypress = (e) => { if(e.key==='Enter') send(); };
 </script>
 </body>
 </html>

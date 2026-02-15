@@ -19,8 +19,7 @@ const User = mongoose.model('User', new mongoose.Schema({
 
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
-    members: [String], // Список участников
-    isPrivate: { type: Boolean, default: false } // Отличие лички от группы
+    members: [String]
 }));
 
 const Message = mongoose.model('Message', new mongoose.Schema({
@@ -33,7 +32,7 @@ const Message = mongoose.model('Message', new mongoose.Schema({
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// API
+// API Авторизации
 app.post('/register', async (req, res) => {
     try { await new User(req.body).save(); res.send({status:'ok'}); } 
     catch(e) { res.send({status:'error'}); }
@@ -49,20 +48,19 @@ app.get('/users', async (req, res) => {
     res.send(users);
 });
 
-// Получить все группы, в которых состоит пользователь
 app.get('/my-groups/:username', async (req, res) => {
     const groups = await Group.find({ members: req.params.username });
     res.send(groups);
 });
 
-// Создать новую группу
 app.post('/create-group', async (req, res) => {
     const group = new Group(req.body);
     await group.save();
-    io.emit('group-created', group); // Оповещаем всех (они проверят, входят ли в нее)
+    io.emit('refresh-groups', group.members); // Мгновенное уведомление
     res.send(group);
 });
 
+// Socket.io
 io.on('connection', (socket) => {
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id) socket.leave(r) });
@@ -77,4 +75,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000);
+server.listen(process.env.PORT || 3000, () => console.log('Server started'));
