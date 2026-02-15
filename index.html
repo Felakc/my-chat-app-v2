@@ -1,54 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Private Chat</title>
+    <title>My Mega Chat v3</title>
     <style>
-        body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
         #auth-screen { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
         
-        /* Боковая панель */
-        #sidebar { width: 250px; background: #ffffff; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        #user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.3s; }
-        .user-item:hover { background: #e7f3ff; }
-        .user-item.active { background: #0084ff; color: white; }
-
-        /* Окно чата */
-        #main-chat { flex: 1; display: flex; flex-direction: column; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
-        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 15px; max-width: 70%; }
-        .msg.me { align-self: flex-end; background: #0084ff; color: white; }
-        .msg.other { align-self: flex-start; background: #e4e6eb; color: black; }
+        #sidebar { width: 300px; background: #ffffff; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         
-        #input-area { padding: 20px; background: white; display: flex; gap: 10px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #user-list { flex: 1; overflow-y: auto; }
+        .user-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; cursor: pointer; }
+        .user-item:hover { background: #f0f7ff; }
+        .user-item input[type="checkbox"] { margin-right: 10px; cursor: pointer; }
+        .user-name { flex: 1; }
+
+        #main-chat { flex: 1; display: flex; flex-direction: column; }
+        #chat-header { padding: 15px; background: white; border-bottom: 1px solid #ddd; font-weight: bold; color: #333; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; background: #e5ddd5; }
+        
+        .msg { margin-bottom: 12px; padding: 8px 15px; border-radius: 18px; max-width: 60%; position: relative; font-size: 14px; line-height: 1.4; }
+        .msg .sender { font-size: 10px; font-weight: bold; margin-bottom: 3px; display: block; }
+        .msg.me { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 2px; }
+        .msg.other { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
+        
+        #input-area { padding: 15px; background: white; display: flex; gap: 10px; align-items: center; }
+        input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0073e6; }
+        #group-btn { background: #42b72a; padding: 5px 10px; font-size: 12px; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <h2>Вход в чат</h2>
-        <input type="text" id="u-name" placeholder="Никнейм"><br>
-        <input type="password" id="u-pass" placeholder="Пароль"><br>
+        <h2>Войти в мессенджер</h2>
+        <input type="text" id="u-name" placeholder="Твой ник" style="margin-bottom: 10px; width: 200px;"><br>
+        <input type="password" id="u-pass" placeholder="Пароль" style="margin-bottom: 10px; width: 200px;"><br>
         <div>
             <button onclick="auth('login')">Войти</button>
-            <button onclick="auth('register')" style="background: #42b72a;">Регистрация</button>
+            <button onclick="auth('register')" style="background: #42b72a;">Создать аккаунт</button>
         </div>
-        <p id="auth-error" style="color: red;"></p>
+        <p id="auth-error"></p>
     </div>
 
     <div id="sidebar">
-        <div style="padding: 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Контакты</div>
+        <div class="sidebar-header">
+            <span>Контакты</span>
+            <button id="group-btn" onclick="createGroup()">Создать группу</button>
+        </div>
         <div id="user-list"></div>
     </div>
 
     <div id="main-chat">
-        <div id="chat-header" style="padding: 15px; background: white; border-bottom: 1px solid #ddd;">Выберите чат</div>
+        <div id="chat-header">Выберите, кому написать</div>
         <div id="messages"></div>
         <div id="input-area">
-            <input type="text" id="m-input" placeholder="Сообщение..." style="flex: 1;">
-            <button onclick="send()">Отправить</button>
+            <input type="text" id="m-input" placeholder="Напишите сообщение...">
+            <button onclick="send()">📡</button>
         </div>
     </div>
 
@@ -61,6 +70,8 @@
         async function auth(type) {
             const username = document.getElementById('u-name').value;
             const password = document.getElementById('u-pass').value;
+            if(!username) return alert("Введите ник");
+            
             const res = await fetch('/' + type, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -72,7 +83,7 @@
                 document.getElementById('auth-screen').style.display = 'none';
                 loadUsers();
             } else {
-                document.getElementById('auth-error').innerText = 'Ошибка!';
+                document.getElementById('auth-error').innerText = 'Ошибка входа/регистрации';
             }
         }
 
@@ -85,18 +96,30 @@
                 if (user.username === myName) return;
                 const div = document.createElement('div');
                 div.className = 'user-item';
-                div.innerText = user.username;
-                div.onclick = () => selectUser(user.username, div);
+                div.innerHTML = `
+                    <input type="checkbox" class="user-select" value="${user.username}">
+                    <span class="user-name" onclick="selectPrivate('${user.username}')">${user.username}</span>
+                `;
                 list.appendChild(div);
             });
         }
 
-        function selectUser(targetUser, element) {
-            document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-            
+        function selectPrivate(targetUser) {
             currentRoom = [myName, targetUser].sort().join('_');
-            document.getElementById('chat-header').innerText = 'Чат с ' + targetUser;
+            startChat('Чат с ' + targetUser);
+        }
+
+        function createGroup() {
+            const selected = Array.from(document.querySelectorAll('.user-select:checked')).map(cb => cb.value);
+            if (selected.length < 1) return alert("Выберите хотя бы одного человека");
+            
+            selected.push(myName);
+            currentRoom = 'group_' + selected.sort().join('-');
+            startChat('Группа: ' + selected.join(', '));
+        }
+
+        function startChat(title) {
+            document.getElementById('chat-header').innerText = title;
             document.getElementById('messages').innerHTML = '';
             socket.emit('join room', currentRoom);
         }
@@ -108,23 +131,18 @@
             document.getElementById('m-input').value = '';
         }
 
-        socket.on('chat message', (data) => {
+        function addMessageToWindow(data) {
             const div = document.createElement('div');
-            div.className = 'msg ' + (data.sender === myName ? 'me' : 'other');
-            div.innerText = data.msg;
-            document.getElementById('messages').appendChild(div);
-            document.getElementById('messages').scrollTop = 100000;
-        });
+            div.className = 'msg ' + (data.sender === myName || data.username === myName ? 'me' : 'other');
+            const senderName = data.sender || data.username;
+            div.innerHTML = `<span class="sender">${senderName}</span>${data.msg || data.text}`;
+            const container = document.getElementById('messages');
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
 
-        socket.on('chat history', (history) => {
-            history.forEach(data => {
-                const div = document.createElement('div');
-                div.className = 'msg ' + (data.username === myName ? 'me' : 'other');
-                div.innerText = data.text;
-                document.getElementById('messages').appendChild(div);
-            });
-            document.getElementById('messages').scrollTop = 100000;
-        });
+        socket.on('chat message', (data) => addMessageToWindow(data));
+        socket.on('chat history', (history) => history.forEach(addMessageToWindow));
     </script>
 </body>
 </html>
