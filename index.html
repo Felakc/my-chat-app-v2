@@ -2,72 +2,67 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Pro v4</title>
+    <title>Messenger Live</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
         
-        /* Авторизация */
         #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
-        #auth-box { background: white; padding: 25px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-        .auth-btns { display: flex; gap: 10px; }
-        .auth-btns button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; }
-
-        /* Боковая панель */
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; display: flex; justify-content: space-between; }
-        .section-title { padding: 8px 15px; background: #f8f9fa; font-size: 11px; color: #666; font-weight: bold; border-bottom: 1px solid #eee; }
-        .item { padding: 12px 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; transition: 0.2s; }
+        #auth-box { background: white; padding: 25px; border-radius: 12px; width: 300px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #auth-box input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        
+        #sidebar { width: 280px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .section-title { padding: 8px 15px; background: #f8f9fa; font-size: 11px; font-weight: bold; color: #666; border-bottom: 1px solid #eee; }
+        
+        #user-list, #group-list { flex-shrink: 0; }
+        .item { padding: 10px 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; }
         .item:hover { background: #f0f7ff; }
-        .item input { margin-right: 12px; transform: scale(1.2); }
+        .item input { margin-right: 10px; }
         .item span { flex: 1; }
 
-        /* Чат */
         #main-chat { flex: 1; display: flex; flex-direction: column; }
-        #chat-header { padding: 15px; background: white; border-bottom: 1px solid #ddd; font-weight: bold; color: #333; }
+        #chat-header { padding: 15px; background: white; border-bottom: 1px solid #ddd; font-weight: bold; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; background: #e5ddd5; display: flex; flex-direction: column; }
         
-        .msg { margin-bottom: 10px; padding: 8px 14px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 75%; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .msg b { font-size: 11px; color: #555; display: block; margin-bottom: 2px; }
+        .msg b { font-size: 11px; display: block; color: #555; }
 
         #input-area { padding: 15px; display: flex; background: white; gap: 10px; }
-        #m-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-        #send-btn { width: 45px; height: 45px; border-radius: 50%; border: none; background: #0084ff; color: white; cursor: pointer; font-weight: bold; }
+        #m-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+        button#send-btn { background: #0084ff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
     <div id="auth-box">
-        <h2>Вход</h2>
+        <h3>Вход</h3>
         <input type="text" id="u-name" placeholder="Никнейм">
         <input type="password" id="u-pass" placeholder="Пароль">
-        <div class="auth-btns">
-            <button onclick="auth('login')" style="background: #0084ff;">Войти</button>
-            <button onclick="auth('register')" style="background: #42b72a;">Создать</button>
-        </div>
-        <p id="auth-error" style="color:red; font-size:12px; margin-top:10px;"></p>
+        <button onclick="auth('login')" style="background:#0084ff; color:white; border:none; padding:10px; width:100%; border-radius:8px; cursor:pointer;">Войти</button>
+        <button onclick="auth('register')" style="background:none; border:none; color:#42b72a; margin-top:10px; cursor:pointer;">Создать аккаунт</button>
+        <p id="auth-error" style="color:red; font-size:12px;"></p>
     </div>
 </div>
 
 <div id="sidebar">
     <div class="sidebar-header">
-        <span>Messenger</span>
-        <button onclick="makeGroup()" style="background:none; border:1px solid white; color:white; border-radius:4px; cursor:pointer; font-size:11px;">+ Группа</button>
+        <span>Чаты</span>
+        <button onclick="makeGroup()" style="background:white; color:#0084ff; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">+ Группа</button>
     </div>
     <div class="section-title">МОИ ГРУППЫ</div>
     <div id="group-list"></div>
-    <div class="section-title">ВСЕ ПОЛЬЗОВАТЕЛИ (выбери для лички или группы)</div>
+    <div class="section-title">ВСЕ ПОЛЬЗОВАТЕЛИ</div>
     <div id="user-list"></div>
 </div>
 
 <div id="main-chat">
-    <div id="chat-header">Выберите, кому написать</div>
+    <div id="chat-header">Выберите чат</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="text" id="m-input" placeholder="Введите сообщение...">
+        <input type="text" id="m-input" placeholder="Напишите что-нибудь...">
         <button id="send-btn" onclick="send()">></button>
     </div>
 </div>
@@ -86,14 +81,15 @@
         if(data.status==='ok') {
             myName = u;
             document.getElementById('auth-screen').style.display='none';
+            socket.emit('store-user', myName); // Регистрация ника на сервере
             loadAll();
         } else {
-            document.getElementById('auth-error').innerText = 'Ошибка входа!';
+            document.getElementById('auth-error').innerText = 'Ошибка!';
         }
     }
 
     async function loadAll() {
-        // Люди
+        // Загрузка пользователей
         const uRes = await fetch('/users');
         const users = await uRes.json();
         const uList = document.getElementById('user-list');
@@ -106,7 +102,7 @@
             uList.appendChild(div);
         });
 
-        // Группы
+        // Загрузка групп
         const gRes = await fetch('/my-groups/'+myName);
         const groups = await gRes.json();
         const gList = document.getElementById('group-list');
@@ -127,7 +123,7 @@
 
     async function makeGroup() {
         const selected = Array.from(document.querySelectorAll('.g-select:checked')).map(cb => cb.value);
-        if(selected.length < 1) return alert("Выбери хотя бы одного участника галочкой");
+        if(selected.length < 1) return alert("Отметьте участников галочками!");
         const gName = prompt("Название группы:");
         if(!gName) return;
         selected.push(myName);
@@ -165,13 +161,7 @@
 
     socket.on('chat message', render);
     socket.on('chat history', (h) => h.forEach(render));
-    
-    // Мгновенное обновление при добавлении в группу
-    socket.on('refresh-groups', (members) => {
-        if(members.includes(myName)) loadAll();
-    });
-
-    // Отправка по Enter
+    socket.on('refresh-groups', () => loadAll()); // Мгновенное обновление
     document.getElementById('m-input').onkeypress = (e) => { if(e.key==='Enter') send(); };
 </script>
 </body>

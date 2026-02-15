@@ -11,7 +11,6 @@ mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/cha
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
 
-// Схемы данных
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true }
@@ -32,7 +31,9 @@ const Message = mongoose.model('Message', new mongoose.Schema({
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// API Авторизации
+// Хранилище онлайн-пользователей
+const userSockets = {};
+
 app.post('/register', async (req, res) => {
     try { await new User(req.body).save(); res.send({status:'ok'}); } 
     catch(e) { res.send({status:'error'}); }
@@ -56,12 +57,21 @@ app.get('/my-groups/:username', async (req, res) => {
 app.post('/create-group', async (req, res) => {
     const group = new Group(req.body);
     await group.save();
-    io.emit('refresh-groups', group.members); // Мгновенное уведомление
+    
+    // Мгновенное уведомление только участников группы
+    group.members.forEach(member => {
+        const sId = userSockets[member];
+        if (sId) io.to(sId).emit('refresh-groups');
+    });
     res.send(group);
 });
 
-// Socket.io
 io.on('connection', (socket) => {
+    // Привязка ника к сокету при входе
+    socket.on('store-user', (username) => {
+        userSockets[username] = socket.id;
+    });
+
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id) socket.leave(r) });
         socket.join(room);
@@ -73,6 +83,12 @@ io.on('connection', (socket) => {
         await new Message({ room: data.room, username: data.sender, text: data.msg }).save();
         io.to(data.room).emit('chat message', data);
     });
+
+    socket.on('disconnect', () => {
+        for (let u in userSockets) {
+            if (userSockets[u] === socket.id) delete userSockets[u];
+        }
+    });
 });
 
-server.listen(process.env.PORT || 3000, () => console.log('Server started'));
+server.listen(process.env.PORT || 3000);
