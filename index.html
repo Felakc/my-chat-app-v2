@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Live</title>
+    <title>Messenger Live Photo</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
@@ -15,34 +15,35 @@
         .sidebar-header { padding: 15px; background: #0084ff; color: white; display: flex; justify-content: space-between; align-items: center; }
         .section-title { padding: 8px 15px; background: #f8f9fa; font-size: 11px; font-weight: bold; color: #666; border-bottom: 1px solid #eee; }
         
-        #user-list, #group-list { flex-shrink: 0; }
         .item { padding: 10px 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; }
         .item:hover { background: #f0f7ff; }
         .item input { margin-right: 10px; }
-        .item span { flex: 1; }
 
         #main-chat { flex: 1; display: flex; flex-direction: column; }
         #chat-header { padding: 15px; background: white; border-bottom: 1px solid #ddd; font-weight: bold; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; background: #e5ddd5; display: flex; flex-direction: column; }
         
-        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 75%; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 75%; box-shadow: 0 1px 1px rgba(0,0,0,0.1); word-wrap: break-word; }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .msg b { font-size: 11px; display: block; color: #555; }
+        .msg b { font-size: 11px; display: block; color: #555; margin-bottom: 4px; }
+        .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; cursor: pointer; display: block; }
 
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; }
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; align-items: center; }
         #m-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-        button#send-btn { background: #0084ff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+        .icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 0 5px; }
+        #send-btn { background: #0084ff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        #file-input { display: none; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
     <div id="auth-box">
-        <h3>Вход</h3>
+        <h3>Messenger</h3>
         <input type="text" id="u-name" placeholder="Никнейм">
         <input type="password" id="u-pass" placeholder="Пароль">
         <button onclick="auth('login')" style="background:#0084ff; color:white; border:none; padding:10px; width:100%; border-radius:8px; cursor:pointer;">Войти</button>
-        <button onclick="auth('register')" style="background:none; border:none; color:#42b72a; margin-top:10px; cursor:pointer;">Создать аккаунт</button>
+        <button onclick="auth('register')" style="background:none; border:none; color:#42b72a; margin-top:10px; cursor:pointer;">Регистрация</button>
         <p id="auth-error" style="color:red; font-size:12px;"></p>
     </div>
 </div>
@@ -52,9 +53,9 @@
         <span>Чаты</span>
         <button onclick="makeGroup()" style="background:white; color:#0084ff; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">+ Группа</button>
     </div>
-    <div class="section-title">МОИ ГРУППЫ</div>
+    <div class="section-title">ГРУППЫ</div>
     <div id="group-list"></div>
-    <div class="section-title">ВСЕ ПОЛЬЗОВАТЕЛИ</div>
+    <div class="section-title">ЛЮДИ</div>
     <div id="user-list"></div>
 </div>
 
@@ -62,7 +63,9 @@
     <div id="chat-header">Выберите чат</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="text" id="m-input" placeholder="Напишите что-нибудь...">
+        <input type="file" id="file-input" accept="image/*" onchange="sendFile(this)">
+        <button class="icon-btn" onclick="document.getElementById('file-input').click()">📎</button>
+        <input type="text" id="m-input" placeholder="Сообщение...">
         <button id="send-btn" onclick="send()">></button>
     </div>
 </div>
@@ -81,7 +84,7 @@
         if(data.status==='ok') {
             myName = u;
             document.getElementById('auth-screen').style.display='none';
-            socket.emit('store-user', myName); // Регистрация ника на сервере
+            socket.emit('store-user', myName);
             loadAll();
         } else {
             document.getElementById('auth-error').innerText = 'Ошибка!';
@@ -89,7 +92,6 @@
     }
 
     async function loadAll() {
-        // Загрузка пользователей
         const uRes = await fetch('/users');
         const users = await uRes.json();
         const uList = document.getElementById('user-list');
@@ -102,7 +104,6 @@
             uList.appendChild(div);
         });
 
-        // Загрузка групп
         const gRes = await fetch('/my-groups/'+myName);
         const groups = await gRes.json();
         const gList = document.getElementById('group-list');
@@ -123,7 +124,7 @@
 
     async function makeGroup() {
         const selected = Array.from(document.querySelectorAll('.g-select:checked')).map(cb => cb.value);
-        if(selected.length < 1) return alert("Отметьте участников галочками!");
+        if(selected.length < 1) return alert("Выбери участников!");
         const gName = prompt("Название группы:");
         if(!gName) return;
         selected.push(myName);
@@ -144,24 +145,43 @@
     function send() {
         const msg = document.getElementById('m-input').value;
         if(msg && currentRoom) {
-            socket.emit('chat message', { room: currentRoom, msg, sender: myName });
+            socket.emit('chat message', { room: currentRoom, msg, sender: myName, type: 'text' });
             document.getElementById('m-input').value = '';
         }
+    }
+
+    function sendFile(input) {
+        const file = input.files[0];
+        if(!file || !currentRoom) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            socket.emit('chat message', { room: currentRoom, msg: e.target.result, sender: myName, type: 'image' });
+        };
+        reader.readAsDataURL(file);
+        input.value = '';
     }
 
     function render(d) {
         const div = document.createElement('div');
         const user = d.sender || d.username;
+        const type = d.type || 'text';
         div.className = 'msg ' + (user === myName ? 'me' : '');
-        div.innerHTML = `<b>${user}</b>${d.msg || d.text}`;
-        const container = document.getElementById('messages');
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+        
+        let html = `<b>${user}</b>`;
+        if(type === 'image') {
+            html += `<img src="${d.msg || d.text}" onclick="window.open(this.src)">`;
+        } else {
+            html += d.msg || d.text;
+        }
+        
+        div.innerHTML = html;
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = 999999;
     }
 
     socket.on('chat message', render);
     socket.on('chat history', (h) => h.forEach(render));
-    socket.on('refresh-groups', () => loadAll()); // Мгновенное обновление
+    socket.on('refresh-groups', () => loadAll());
     document.getElementById('m-input').onkeypress = (e) => { if(e.key==='Enter') send(); };
 </script>
 </body>

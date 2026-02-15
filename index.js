@@ -5,7 +5,9 @@ const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 1e7 });
+const io = new Server(server, { 
+    maxHttpBufferSize: 1e7 // Увеличили лимит до 10МБ для передачи фото
+});
 
 mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db')
     .then(() => console.log('MongoDB Connected'))
@@ -25,13 +27,13 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
     text: String,
+    type: { type: String, default: 'text' }, // 'text' или 'image'
     timestamp: { type: Date, default: Date.now }
 }));
 
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// Хранилище онлайн-пользователей
 const userSockets = {};
 
 app.post('/register', async (req, res) => {
@@ -57,8 +59,6 @@ app.get('/my-groups/:username', async (req, res) => {
 app.post('/create-group', async (req, res) => {
     const group = new Group(req.body);
     await group.save();
-    
-    // Мгновенное уведомление только участников группы
     group.members.forEach(member => {
         const sId = userSockets[member];
         if (sId) io.to(sId).emit('refresh-groups');
@@ -67,7 +67,6 @@ app.post('/create-group', async (req, res) => {
 });
 
 io.on('connection', (socket) => {
-    // Привязка ника к сокету при входе
     socket.on('store-user', (username) => {
         userSockets[username] = socket.id;
     });
@@ -80,7 +79,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chat message', async (data) => {
-        await new Message({ room: data.room, username: data.sender, text: data.msg }).save();
+        const newMessage = new Message({ 
+            room: data.room, 
+            username: data.sender, 
+            text: data.msg,
+            type: data.type || 'text' 
+        });
+        await newMessage.save();
         io.to(data.room).emit('chat message', data);
     });
 
