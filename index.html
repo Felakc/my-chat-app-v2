@@ -1,203 +1,129 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <title>Chat App (Secure)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>My Private Chat</title>
     <style>
-        body { margin: 0; padding-bottom: 3rem; font-family: sans-serif; }
-        #messages { list-style-type: none; margin: 0; padding: 0; }
-        #messages li { padding: 0.5rem 1rem; }
-        #messages li:nth-child(odd) { background: #efefef; }
-        #chat { background: #333; padding: 0.25rem; display: flex; box-sizing: border-box; }
-        #chat > input, #chat > button { border: none; padding: 0.5rem; margin: 0.25rem; }
-        #chat > input:focus { outline: none; }
-        #chat > button { background: #1a73e8; color: white; }
-        .hidden { display: none; }
-        #auth-form { padding: 20px; border: 1px solid #ccc; max-width: 400px; margin: 50px auto; text-align: center; }
-        #auth-form input { margin: 10px 0; padding: 10px; width: 80%; display: block; margin-left: auto; margin-right: auto; }
-        #auth-form button { padding: 10px 20px; margin: 5px; cursor: pointer; }
-        #messages img { max-width: 100%; height: auto; border-radius: 5px; margin-top: 5px; } 
+        body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
+        #auth-screen { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        
+        /* Боковая панель */
+        #sidebar { width: 250px; background: #ffffff; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        #user-list { flex: 1; overflow-y: auto; }
+        .user-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.3s; }
+        .user-item:hover { background: #e7f3ff; }
+        .user-item.active { background: #0084ff; color: white; }
+
+        /* Окно чата */
+        #main-chat { flex: 1; display: flex; flex-direction: column; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
+        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 15px; max-width: 70%; }
+        .msg.me { align-self: flex-end; background: #0084ff; color: white; }
+        .msg.other { align-self: flex-start; background: #e4e6eb; color: black; }
+        
+        #input-area { padding: 20px; background: white; display: flex; gap: 10px; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <ul id="messages"></ul>
 
-    <form id="auth-form" action="">
-        <h2>Вход / Регистрация</h2>
-        <input id="auth-username" autocomplete="off" placeholder="Имя пользователя" required />
-        <input id="auth-password" type="password" autocomplete="off" placeholder="Пароль" required />
-        <button id="register-btn" type="button">Регистрация</button>
-        <button id="login-btn" type="submit">Войти</button>
-        <p id="auth-message" style="color: red;"></p>
-    </form>
+    <div id="auth-screen">
+        <h2>Вход в чат</h2>
+        <input type="text" id="u-name" placeholder="Никнейм"><br>
+        <input type="password" id="u-pass" placeholder="Пароль"><br>
+        <div>
+            <button onclick="auth('login')">Войти</button>
+            <button onclick="auth('register')" style="background: #42b72a;">Регистрация</button>
+        </div>
+        <p id="auth-error" style="color: red;"></p>
+    </div>
 
-    <form id="chat" action="" class="hidden">
-        <input id="username" autocomplete="off" placeholder="Ваше Имя" style="width: 100px;" readonly />
-        <input id="receiver" autocomplete="off" placeholder="Получатель (для ЛС)" style="width: 150px;" />
-        
-        <input type="file" id="file-input" accept="image/*" title="Отправить картинку" style="width: 80px; padding: 0;">
-        
-        <input id="m" autocomplete="off" placeholder="Сообщение..." style="flex-grow: 1;" />
-        <button type="submit">Отправить</button>
-    </form>
-    
-    <script src="/socket.io/socket.io.js"></script> 
-    
+    <div id="sidebar">
+        <div style="padding: 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Контакты</div>
+        <div id="user-list"></div>
+    </div>
+
+    <div id="main-chat">
+        <div id="chat-header" style="padding: 15px; background: white; border-bottom: 1px solid #ddd;">Выберите чат</div>
+        <div id="messages"></div>
+        <div id="input-area">
+            <input type="text" id="m-input" placeholder="Сообщение..." style="flex: 1;">
+            <button onclick="send()">Отправить</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-        // 🚨🚨🚨 ВАЖНО: ВСТАВЬТЕ СЮДА ВАШ НОВЫЙ URL СЕРВИСА RENDER 🚨🚨🚨
-        // ПРИМЕР: 'https://my-chat-app-v2-uzje.onrender.com'
-        const SERVER_URL = 'https://my-chat-app-v2-uzje.onrender.com'; 
-        
-        const socket = io(SERVER_URL, {
-            transports: ['websocket'] 
-        }); 
+        const socket = io();
+        let myName = '';
+        let currentRoom = '';
 
-        // Инициализация элементов
-        const authForm = document.getElementById('auth-form');
-        const authUsernameInput = document.getElementById('auth-username');
-        const authPasswordInput = document.getElementById('auth-password');
-        const registerBtn = document.getElementById('register-btn');
-        const authMessage = document.getElementById('auth-message');
-        const chatForm = document.getElementById('chat');
-        const inputMessage = document.getElementById('m');
-        const inputReceiver = document.getElementById('receiver'); 
-        const inputChatUsername = document.getElementById('username'); 
-        const fileInput = document.getElementById('file-input'); 
-        const messages = document.getElementById('messages');
-
-        let currentUsername = null; 
-        
-        // --- Логика Аутентификации (без изменений) ---
-        
-        registerBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const username = authUsernameInput.value.trim();
-            const password = authPasswordInput.value;
-            if (username && password) {
-                socket.emit('register', { username, password });
+        async function auth(type) {
+            const username = document.getElementById('u-name').value;
+            const password = document.getElementById('u-pass').value;
+            const res = await fetch('/' + type, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                myName = username;
+                document.getElementById('auth-screen').style.display = 'none';
+                loadUsers();
+            } else {
+                document.getElementById('auth-error').innerText = 'Ошибка!';
             }
-        });
-
-        authForm.addEventListener('submit', function(e) {
-            e.preventDefault(); 
-            const username = authUsernameInput.value.trim();
-            const password = authPasswordInput.value;
-            
-            if (e.submitter && e.submitter.id === 'register-btn') return;
-            
-            if (username && password) {
-                socket.emit('login', { username, password });
-            }
-        });
-
-        socket.on('auth error', function(msg) {
-            authMessage.textContent = msg;
-            authMessage.style.color = 'red';
-        });
-
-        socket.on('auth message', function(msg) {
-            authMessage.textContent = msg;
-            authMessage.style.color = 'green';
-        });
-
-        socket.on('auth success', function(data) {
-            currentUsername = data.username;
-            authForm.classList.add('hidden');
-            chatForm.classList.remove('hidden');
-            inputChatUsername.value = currentUsername;
-            
-            authMessage.textContent = `Добро пожаловать, ${currentUsername}!`;
-            authMessage.style.color = 'blue';
-
-            socket.emit('authenticate', currentUsername);
-        });
-        
-        // --- Логика Чата ---
-        
-        function displayMessage(data) {
-            const item = document.createElement('li');
-            const sender = data.sender;
-            const msg = data.msg;
-            
-            if (data.fileData) {
-                const img = document.createElement('img');
-                img.src = data.fileData; 
-                
-                item.innerHTML = `<strong>${sender}:</strong> `;
-                item.appendChild(img);
-                
-                if (msg) {
-                     const textNode = document.createElement('p');
-                     textNode.textContent = msg;
-                     item.appendChild(textNode);
-                }
-                
-            } else if (msg) {
-                item.innerHTML = `<strong>${sender}:</strong> ${msg}`;
-            }
-            
-            messages.appendChild(item);
-            window.scrollTo(0, document.body.scrollHeight);
         }
 
-        // ОБНОВЛЕННАЯ ФУНКЦИЯ отправки с обработкой ошибок File Reader
-        chatForm.addEventListener('submit', function(e) {
-            e.preventDefault(); 
+        async function loadUsers() {
+            const res = await fetch('/users');
+            const users = await res.json();
+            const list = document.getElementById('user-list');
+            list.innerHTML = '';
+            users.forEach(user => {
+                if (user.username === myName) return;
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.innerText = user.username;
+                div.onclick = () => selectUser(user.username, div);
+                list.appendChild(div);
+            });
+        }
+
+        function selectUser(targetUser, element) {
+            document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
             
-            const message = inputMessage.value.trim();
-            const receiver = inputReceiver.value.trim(); 
-            const file = fileInput.files[0]; 
+            currentRoom = [myName, targetUser].sort().join('_');
+            document.getElementById('chat-header').innerText = 'Чат с ' + targetUser;
+            document.getElementById('messages').innerHTML = '';
+            socket.emit('join room', currentRoom);
+        }
 
-            if (file) {
-                const reader = new FileReader();
-                
-                // 1. УСПЕШНАЯ ЗАГРУЗКА
-                reader.onload = function(e) {
-                    const fileData = e.target.result; 
-                    
-                    const data = {
-                        sender: currentUsername,
-                        receiver: receiver || null, 
-                        msg: message || null, 
-                        fileData: fileData,  
-                        fileName: file.name
-                    };
-                    
-                    socket.emit('chat message', data); 
-                    fileInput.value = ''; 
-                    inputMessage.value = ''; 
-                    inputReceiver.value = ''; 
-                };
-                
-                // 2. ОБРАБОТКА ОШИБОК
-                reader.onerror = function(e) {
-                    console.error('Ошибка при чтении файла:', e.target.error);
-                    alert('Не удалось прочитать файл. Возможно, он слишком большой.');
-                    fileInput.value = '';
-                };
+        function send() {
+            const msg = document.getElementById('m-input').value;
+            if (!msg || !currentRoom) return;
+            socket.emit('chat message', { room: currentRoom, msg, sender: myName });
+            document.getElementById('m-input').value = '';
+        }
 
-                // 3. ЗАПУСК ПРОЦЕССА
-                reader.readAsDataURL(file); 
-                
-            } else if (message && currentUsername) {
-                const data = {
-                    sender: currentUsername,
-                    receiver: receiver || null, 
-                    msg: message,
-                    fileData: null 
-                };
-                socket.emit('chat message', data); 
-                inputMessage.value = ''; 
-                inputReceiver.value = ''; 
-            }
+        socket.on('chat message', (data) => {
+            const div = document.createElement('div');
+            div.className = 'msg ' + (data.sender === myName ? 'me' : 'other');
+            div.innerText = data.msg;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = 100000;
         });
-        
-        socket.on('chat message', displayMessage);
 
-        socket.on('history', function(history) {
-            messages.innerHTML = ''; 
-            history.forEach(displayMessage);
-            displayMessage({ sender: '[СИСТЕМА]', msg: '--- История загружена ---' });
+        socket.on('chat history', (history) => {
+            history.forEach(data => {
+                const div = document.createElement('div');
+                div.className = 'msg ' + (data.username === myName ? 'me' : 'other');
+                div.innerText = data.text;
+                document.getElementById('messages').appendChild(div);
+            });
+            document.getElementById('messages').scrollTop = 100000;
         });
     </script>
 </body>

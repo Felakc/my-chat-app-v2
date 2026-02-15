@@ -1,121 +1,77 @@
-// index.js (Финальная версия сервера с Аутентификацией, Историей и Картинками)
-
-// --- A. Инициализация Модулей и БД ---
 const express = require('express');
-const app = express();
 const http = require('http');
+const { Server } = require('socket.io');
+const mongoose = require('mongoose');
+const path = require('path');
+
+const app = express();
 const server = http.createServer(app);
-const { Server } = require("socket.io");
 const io = new Server(server);
-const mongoose = require('mongoose'); 
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 
-// 🚨🚨 ВАШ РАБОЧИЙ АДРЕС MONGODB 🚨🚨
-const dbURI = 'mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db'; 
+// Подключение к MongoDB
+mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db')
+    .then(() => console.log('MongoDB Connected'))
+    .catch(err => console.log('DB Error:', err));
 
-const JWT_SECRET = 'my_super_secret_key_12345'; 
-const saltRounds = 10; 
+// Схема пользователя
+const userSchema = new mongoose.Schema({
+    username: { type: String, unique: true, required: true },
+    password: { type: String, required: true }
+});
+const User = mongoose.model('User', userSchema);
 
-mongoose.connect(dbURI)
-  .then(() => console.log('Подключение к MongoDB установлено'))
-  .catch(err => console.error('Ошибка подключения к MongoDB:', err));
+// Схема сообщения (теперь с полем room)
+const messageSchema = new mongoose.Schema({
+    room: String, 
+    username: String,
+    text: String,
+    type: { type: String, default: 'text' },
+    timestamp: { type: Date, default: Date.now }
+});
+const Message = mongoose.model('Message', messageSchema);
 
-// Схемы для сообщений и пользователей
-const Message = mongoose.model('Message', new mongoose.Schema({ sender: String, msg: String, timestamp: { type: Date, default: Date.now } }));
-const User = mongoose.model('User', new mongoose.Schema({ username: { type: String, required: true, unique: true }, password: { type: String, required: true } })); 
+app.use(express.static(__dirname));
+app.use(express.json());
 
-// --- B. Вспомогательные функции и карта пользователей ---
+// API для регистрации и логина
+app.post('/register', async (req, res) => {
+    try {
+        const user = new User(req.body);
+        await user.save();
+        res.status(201).send({ status: 'ok' });
+    } catch (e) { res.status(400).send({ status: 'error' }); }
+});
+
+app.post('/login', async (req, res) => {
+    const user = await User.findOne(req.body);
+    if (user) res.send({ status: 'ok' });
+    else res.status(401).send({ status: 'error' });
+});
+
+// API для получения списка всех пользователей (для боковой панели)
+app.get('/users', async (req, res) => {
+    const users = await User.find({}, 'username');
+    res.send(users);
+});
+
+// Socket.io логика
+io.on('connection', (socket) => {
+    socket.on('join room', async (room) => {
+        socket.rooms.forEach(r => socket.leave(r)); // Выходим из старых комнат
+        socket.join(room);
+        
+        // Загружаем историю только этой комнаты
+        const history = await Message.find({ room }).sort({ timestamp: 1 }).limit(50);
+        socket.emit('chat history', history);
+    });
+
+    socket.on('chat message', async (data) => {
+        const { room, msg, sender, type } = data;
+        const newMessage = new Message({ room, username: sender, text: msg, type: type || 'text' });
+        await newMessage.save();
+        io.to(room).emit('chat message', data);
+    });
+});
+
 const PORT = process.env.PORT || 3000;
-const users = new Map(); 
-
-// --- C. Отдача Клиентского Файла ---
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
-
-// --- D. Логика Socket.IO ---
-io.on('connection', async (socket) => {
-
-    // РЕГИСТРАЦИЯ
-    socket.on('register', async ({ username, password }) => {
-        try {
-            const hashedPassword = await bcrypt.hash(password, saltRounds);
-            const user = new User({ username, password: hashedPassword });
-            await user.save();
-            socket.emit('auth message', 'Регистрация успешна! Теперь Вы можете войти.');
-        } catch (err) {
-            socket.emit('auth error', 'Ошибка регистрации. Имя пользователя уже занято.');
-        }
-    });
-
-    // ВХОД
-    socket.on('login', async ({ username, password }) => {
-        try {
-            const user = await User.findOne({ username });
-            if (!user) {
-                return socket.emit('auth error', 'Неверное имя пользователя или пароль.');
-            }
-            const match = await bcrypt.compare(password, user.password);
-            if (!match) {
-                return socket.emit('auth error', 'Неверное имя пользователя или пароль.');
-            }
-
-            const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn: '1h' });
-            socket.emit('auth success', { username: user.username, token });
-        } catch (err) {
-            socket.emit('auth error', 'Ошибка входа.');
-        }
-    });
-    
-    // АУТЕНТИКАЦИЯ / ИСТОРИЯ
-    socket.on('authenticate', async (username) => {
-        socket.username = username;
-        users.set(username, socket.id);
-        io.emit('chat message', { sender: '[СИСТЕМА]', msg: `Пользователь ${username} подключился.` });
-        try {
-            const history = await Message.find().sort({ timestamp: -1 }).limit(100);
-            socket.emit('history', history.reverse()); 
-        } catch (err) {
-            console.error('Ошибка загрузки истории:', err);
-        }
-    });
-
-    // СООБЩЕНИЯ И КАРТИНКИ
-    socket.on('chat message', (data) => {
-        if (!socket.username) return socket.emit('chat message', { sender: '[СИСТЕМА]', msg: 'Сначала войдите в систему!' });
-        
-        // В MongoDB сохраняем только текст
-        if (!data.fileData && data.msg) {
-            const messageModel = new Message({ sender: data.sender, msg: data.msg });
-            messageModel.save();
-        }
-        
-        if (data.receiver) {
-            // ПРИВАТНОЕ
-            const receiverSocketId = users.get(data.receiver);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('chat message', data);
-                socket.emit('chat message', data); 
-            } else {
-                socket.emit('chat message', { sender: '[СИСТЕМА]', msg: `Пользователь ${data.receiver} не в сети.` });
-            }
-        } else {
-            // ОБЩИЙ ЧАТ
-            io.emit('chat message', data); 
-        }
-    });
-  
-    // ОТКЛЮЧЕНИЕ
-    socket.on('disconnect', () => {
-        if (socket.username) {
-            users.delete(socket.username);
-            io.emit('chat message', { sender: '[СИСТЕМА]', msg: `Пользователь ${socket.username} отключился.` });
-        }
-    });
-});
-
-// --- E. Запуск Сервера ---
-server.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
