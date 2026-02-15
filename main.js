@@ -3,7 +3,7 @@
 const { app, BrowserWindow } = require('electron');
 
 // 🚨 ВАШ РАБОЧИЙ АДРЕС НА RENDER:
-const URL_CHAT_APP = 'https://moi-chat-oik9.onrender.com'; 
+const URL_CHAT_APP = 'https://my-chat-app-v2-uzje.onrender.com'; 
 
 function createWindow () {
   // Создаем стандартное окно для ПК
