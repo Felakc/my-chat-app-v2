@@ -2,40 +2,61 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Final</title>
+    <title>Messenger Final Fix</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
-        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        
+        /* Экран входа - удаляется полностью после входа */
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 1000000; }
         #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         #auth-box input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+
+        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 10; }
         .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
-        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
+        
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; z-index: 1; }
+
+        /* ФИКС ПОЛЯ ВВОДА */
+        #input-area { 
+            padding: 15px; 
+            display: flex; 
+            background: white; 
+            gap: 10px; 
+            border-top: 1px solid #ddd; 
+            position: relative; 
+            z-index: 999999 !important; /* Поверх всего */
+        }
+        
+        #m-input { 
+            flex: 1; 
+            padding: 12px 15px; 
+            border: 2px solid #0084ff; 
+            border-radius: 25px; 
+            outline: none; 
+            font-size: 16px;
+            background: #ffffff !important;
+            color: #000000 !important;
+            pointer-events: auto !important;
+            user-select: text !important;
+        }
+
         .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .del-btn { cursor: pointer; color: red; font-size: 10px; margin-left: 8px; opacity: 0.5; }
-        .del-btn:hover { opacity: 1; }
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; }
-        #m-input { 
-            flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 25px; outline: none; 
-            background: white !important; color: black !important;
-        }
-        .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
         .item:hover { background: #f0f7ff; }
-        .menu-dots { color: #aaa; cursor: pointer; padding: 5px; }
-        .dropdown-menu { display: none; position: absolute; background: white; border: 1px solid #ddd; padding: 5px; border-radius: 5px; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .del-btn { color: red; cursor: pointer; font-size: 12px; margin-left: 5px; }
     </style>
 </head>
-<body onclick="document.querySelectorAll('.dropdown-menu').forEach(m=>m.style.display='none')">
+<body>
 
 <div id="auth-screen">
     <div id="auth-box">
         <h2>Messenger</h2>
         <input type="text" id="u-name" placeholder="Логин">
         <input type="password" id="u-pass" placeholder="Пароль">
-        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px;">Войти</button>
+        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
         <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Регистрация</button>
     </div>
 </div>
@@ -55,8 +76,9 @@
     <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold;">Выберите чат</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
-        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px;">></button>
+        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off" 
+               onfocus="this.removeAttribute('readonly'); this.disabled=false;">
+        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer;">></button>
     </div>
 </div>
 
@@ -68,12 +90,16 @@
     async function auth(type) {
         const u = document.getElementById('u-name').value;
         const p = document.getElementById('u-pass').value;
+        if(!u || !p) return alert("Заполни поля");
+
         const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
         const data = await res.json();
+        
         if(data.status==='ok') {
             myTag = data.tag;
             document.getElementById('my-tag').innerText = "Ваш ID: " + myTag;
-            document.getElementById('auth-screen').style.display = 'none';
+            // ПОЛНОЕ УДАЛЕНИЕ окна входа, чтобы не мешало кликать
+            document.getElementById('auth-screen').remove();
             socket.emit('store-user', myTag);
             loadSidebar();
         } else { alert("Ошибка!"); }
@@ -88,18 +114,9 @@
             const div = document.createElement('div');
             div.className = 'item';
             div.innerHTML = `<span onclick="openPriv('${partner}')">👤 ${partner}</span>
-                <div class="menu-dots" onclick="showMenu(event, '${partner}')">⋮</div>
-                <div id="m-${partner}" class="dropdown-menu"><div onclick="this.parentElement.parentElement.remove()">Скрыть</div></div>`;
+                             <span onclick="this.parentElement.remove()" style="color:#ccc">⋮</span>`;
             list.appendChild(div);
         });
-    }
-
-    function showMenu(e, id) {
-        e.stopPropagation();
-        const m = document.getElementById('m-'+id);
-        m.style.display = 'block';
-        m.style.left = e.pageX + 'px';
-        m.style.top = e.pageY + 'px';
     }
 
     function openPriv(t) {
@@ -107,7 +124,11 @@
         document.getElementById('chat-header').innerText = t;
         document.getElementById('messages').innerHTML = '';
         socket.emit('join room', currentRoom);
-        setTimeout(() => document.getElementById('m-input').focus(), 100);
+        
+        // Принудительный фокус на ввод
+        const input = document.getElementById('m-input');
+        input.disabled = false;
+        setTimeout(() => input.focus(), 100);
     }
 
     function send() {
@@ -139,15 +160,14 @@
 
     socket.on('chat message', (d) => {
         if(d.room === currentRoom) render(d);
-        loadSidebar();
+        loadSidebar(); // Моментальное обновление сайдбара
     });
 
     socket.on('update-sidebar-global', loadSidebar);
-
     socket.on('chat history', h => h.forEach(render));
     socket.on('msg-deleted', id => { const el = document.getElementById('msg-'+id); if(el) el.remove(); });
     
-    document.getElementById('m-input').onkeydown = e => e.key==='Enter' && send();
+    document.getElementById('m-input').onkeydown = e => { if(e.key==='Enter') send(); };
 </script>
 </body>
 </html>
