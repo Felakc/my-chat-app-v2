@@ -2,37 +2,41 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Fix</title>
+    <title>Messenger Pro Max</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
         
-        /* Экран входа - теперь он удаляется из DOM после входа */
-        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 1000; }
         #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         #auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-        
+
         #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 10; }
         .sidebar-header { padding: 15px; background: #0084ff; color: white; display: flex; justify-content: space-between; align-items: center; }
         .my-tag-info { padding: 10px; background: #eef6ff; font-size: 12px; text-align: center; color: #0084ff; font-weight: bold; border-bottom: 1px solid #ddd; }
         
         .search-area { padding: 10px; border-bottom: 1px solid #eee; display: flex; gap: 5px; }
         .search-area input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
+        .section-title { padding: 8px 15px; background: #f8f9fa; font-size: 11px; font-weight: bold; color: #888; }
 
-        #main-chat { flex: 1; display: flex; flex-direction: column; position: relative; background: #e5ddd5; }
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
         
+        .item { padding: 12px 15px; border-bottom: 1px solid #f9f9f9; display: flex; align-items: center; cursor: pointer; position: relative; }
+        .item:hover { background: #f0f7ff; }
+        .item-name { flex: 1; font-size: 14px; }
+
+        .menu-dots { padding: 5px 10px; cursor: pointer; color: #aaa; font-size: 18px; }
+        .dropdown-menu { display: none; position: absolute; right: 10px; top: 40px; background: white; border: 1px solid #ddd; border-radius: 8px; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-width: 150px; }
+        .dropdown-menu div { padding: 10px; font-size: 13px; }
+        .dropdown-menu div:hover { background: #f5f5f5; }
+
         .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        
-        /* Поле ввода - поднял z-index, чтобы ничего не мешало */
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; align-items: center; border-top: 1px solid #ddd; z-index: 100; }
-        #m-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 16px; background: white !important; }
-        
-        .action-btn { background: #0084ff; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; }
+        .del-msg { color: #ff4d4d; font-size: 10px; cursor: pointer; float: right; margin-left: 10px; }
 
-        .item { padding: 12px 15px; border-bottom: 1px solid #f9f9f9; display: flex; align-items: center; cursor: pointer; }
-        .dropdown-menu { display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 8px; z-index: 200; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; align-items: center; border-top: 1px solid #ddd; z-index: 100; }
+        #m-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 16px; }
     </style>
 </head>
 <body onclick="closeAllMenus()">
@@ -50,14 +54,16 @@
 <div id="sidebar">
     <div class="sidebar-header">
         <span>Чаты</span>
-        <button onclick="makeGroup()" style="background:white; color:#0084ff; border:none; padding:5px; border-radius:5px; font-size:11px;">+ Группа</button>
+        <button onclick="makeGroup()" style="background:white; color:#0084ff; border:none; padding:5px 10px; border-radius:5px; font-size:11px;">+ Группа</button>
     </div>
     <div class="my-tag-info" id="my-tag">Ваш ID: ...</div>
     <div class="search-area">
-        <input type="text" id="search-input" placeholder="Имя#1234">
-        <button onclick="findUser()">Найти</button>
+        <input type="text" id="search-input" placeholder="Найти Имя#1234">
+        <button onclick="findUser()" style="background:#42b72a; color:white; border:none; border-radius:5px; padding:5px 10px;">Найти</button>
     </div>
+    <div class="section-title">ДИАЛОГИ</div>
     <div id="user-list"></div>
+    <div class="section-title">ГРУППЫ</div>
     <div id="group-list"></div>
 </div>
 
@@ -66,9 +72,9 @@
     <div id="messages"></div>
     <div id="input-area">
         <input type="file" id="f-in" style="display:none" onchange="sendFile(this)">
-        <button onclick="document.getElementById('f-in').click()">📎</button>
+        <button onclick="document.getElementById('f-in').click()" style="font-size:20px; background:none; border:none; cursor:pointer;">📎</button>
         <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
-        <button class="action-btn" onclick="send()">></button>
+        <button onclick="send()" style="background:#0084ff; color:white; border:none; padding:10px 20px; border-radius:25px; cursor:pointer;">></button>
     </div>
 </div>
 
@@ -80,19 +86,46 @@
     async function auth(type) {
         const u = document.getElementById('u-name').value.trim();
         const p = document.getElementById('u-pass').value.trim();
-        if(!u || !p) return alert("Заполни поля!");
-
+        if(!u || !p) return alert("Заполни поля");
         const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
         const data = await res.json();
-        
         if(data.status==='ok') {
             myTag = data.tag;
             document.getElementById('my-tag').innerText = "Ваш ID: " + myTag;
-            // Полностью удаляем экран входа, чтобы он не мешал кликать
-            document.getElementById('auth-screen').remove(); 
+            document.getElementById('auth-screen').remove();
             socket.emit('store-user', myTag);
-            loadGroups();
+            loadSidebar();
         } else { alert(data.message || "Ошибка!"); }
+    }
+
+    async function loadSidebar() {
+        // Загрузка групп
+        const gRes = await fetch('/my-groups/'+myTag);
+        const groups = await gRes.json();
+        const gList = document.getElementById('group-list');
+        gList.innerHTML = '';
+        groups.forEach(g => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `<span class="item-name" onclick="openG('${g._id}','${g.name}')">👥 ${g.name}</span>
+                <div class="menu-dots" onclick="toggleMenu(event, 'mg-${g._id}')">⋮</div>
+                <div id="mg-${g._id}" class="dropdown-menu"><div onclick="leaveG('${g._id}')">Выйти из группы</div></div>`;
+            gList.appendChild(div);
+        });
+
+        // Загрузка активных чатов (включая тех, кто написал нам)
+        const cRes = await fetch('/my-chats/'+myTag);
+        const chats = await cRes.json();
+        const uList = document.getElementById('user-list');
+        uList.innerHTML = '';
+        chats.forEach(partner => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `<input type="checkbox" class="g-sel" value="${partner}"><span class="item-name" onclick="openPriv('${partner}')">👤 ${partner}</span>
+                <div class="menu-dots" onclick="toggleMenu(event, 'm-${partner}')">⋮</div>
+                <div id="m-${partner}" class="dropdown-menu"><div onclick="this.parentElement.parentElement.remove()">Скрыть</div></div>`;
+            uList.appendChild(div);
+        });
     }
 
     async function findUser() {
@@ -101,51 +134,51 @@
         const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
         const user = await res.json();
         if(user.tag) {
-            const uList = document.getElementById('user-list');
-            uList.innerHTML = `<div class="item" onclick="openPriv('${user.tag}')">${user.tag}</div>`;
+            openPriv(user.tag);
         } else { alert("Не найден"); }
     }
 
-    function openPriv(t) { currentRoom = [myTag, t].sort().join('_'); startChat('Чат: '+t); }
-    
+    function toggleMenu(e, id) { e.stopPropagation(); closeAllMenus(); document.getElementById(id).style.display = 'block'; }
+    function closeAllMenus() { document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none'); }
+
+    function openPriv(t) { currentRoom = [myTag, t].sort().join('_'); startChat(t); }
+    function openG(id, n) { currentRoom = id; startChat(n); }
     function startChat(t) { 
         document.getElementById('chat-header').innerText = t; 
         document.getElementById('messages').innerHTML = ''; 
         socket.emit('join room', currentRoom);
-        // Принудительно ставим курсор в поле ввода
         setTimeout(() => document.getElementById('m-input').focus(), 100);
     }
 
     function send() {
         const input = document.getElementById('m-input');
         const val = input.value.trim();
-        if(val && currentRoom) { 
-            socket.emit('chat message', { room: currentRoom, msg: val, sender: myTag, type: 'text' }); 
-            input.value = ''; 
+        if(val && currentRoom) {
+            socket.emit('chat message', { room: currentRoom, msg: val, sender: myTag, type: 'text' });
+            input.value = '';
             input.focus();
         }
     }
 
-    // Слушаем Enter напрямую на поле ввода
-    document.getElementById('m-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            send();
-        }
-    });
+    function sendFile(input) {
+        const reader = new FileReader();
+        reader.onload = (e) => socket.emit('chat message', { room: currentRoom, msg: e.target.result, sender: myTag, type: 'image' });
+        reader.readAsDataURL(input.files[0]);
+    }
 
-    // Остальные функции (loadGroups, render и т.д.) без изменений как в прошлом коде
-    async function loadGroups() {
-        const gRes = await fetch('/my-groups/'+myTag);
-        const groups = await gRes.json();
-        const gList = document.getElementById('group-list');
-        gList.innerHTML = '';
-        groups.forEach(g => {
-            const div = document.createElement('div');
-            div.className = 'item';
-            div.innerText = '👥 ' + g.name;
-            div.onclick = () => { currentRoom = g._id; startChat(g.name); };
-            gList.appendChild(div);
-        });
+    async function leaveG(id) {
+        await fetch('/leave-group', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:id, tag:myTag})});
+        loadSidebar();
+    }
+
+    async function makeGroup() {
+        const sel = Array.from(document.querySelectorAll('.g-sel:checked')).map(c => c.value);
+        const name = prompt("Имя группы:");
+        if(name && sel.length) {
+            sel.push(myTag);
+            await fetch('/create-group', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, members:sel})});
+            loadSidebar();
+        }
     }
 
     function render(d) {
@@ -154,13 +187,18 @@
         div.id = 'msg-'+id;
         const user = d.sender || d.username;
         div.className = 'msg ' + (user === myTag ? 'me' : '');
-        div.innerHTML = `<b>${user}</b>${d.msg || d.text}`;
+        div.innerHTML = `<b>${user}</b>${d.type==='image' ? '<img src="'+(d.msg||d.text)+'" style="width:100%">' : (d.msg||d.text)}`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = 99999;
     }
 
-    socket.on('chat message', render);
+    socket.on('chat message', (d) => {
+        if(d.room === currentRoom) render(d);
+        loadSidebar(); // Авто-обновление списка при новом сообщении!
+    });
     socket.on('chat history', h => h.forEach(render));
+    socket.on('refresh-groups', loadSidebar);
+    document.getElementById('m-input').onkeypress = (e) => e.key === 'Enter' && send();
 </script>
 </body>
 </html>

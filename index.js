@@ -35,35 +35,45 @@ app.use(express.json());
 
 const userSockets = {};
 
-// РЕГИСТРАЦИЯ (Всегда создает тег)
+// РЕГИСТРАЦИЯ
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
-        if(!username || !password) return res.send({ status: 'error', message: 'Заполни все поля!' });
-        
+        if(!username || !password) return res.send({ status: 'error', message: 'Заполни поля' });
         const exists = await User.findOne({ username });
-        if (exists) return res.send({ status: 'error', message: 'Имя уже занято' });
-
+        if (exists) return res.send({ status: 'error', message: 'Имя занято' });
         const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
         await new User({ username, tag, password }).save();
         res.send({ status: 'ok', tag });
-    } catch(e) { res.send({ status: 'error', message: 'Ошибка базы' }); }
+    } catch(e) { res.send({ status: 'error' }); }
 });
 
-// ЛОГИН (Чинит старые аккаунты)
+// ЛОГИН + Исправление старых акков
 app.post('/login', async (req, res) => {
     try {
         const user = await User.findOne({ username: req.body.username, password: req.body.password });
-        if (!user) return res.send({ status: 'error', message: 'Неверный логин или пароль' });
-
-        // Если это старый акк без тега — создаем его прямо сейчас
+        if (!user) return res.send({ status: 'error', message: 'Ошибка входа' });
         if (!user.tag) {
             user.tag = `${user.username}#${Math.floor(1000 + Math.random() * 9000)}`;
             await user.save();
         }
-
         res.send({ status: 'ok', tag: user.tag });
     } catch (e) { res.send({ status: 'error' }); }
+});
+
+// ПОИСК АКТИВНЫХ ЧАТОВ (Чтобы видеть тех, кто написал тебе)
+app.get('/my-chats/:tag', async (req, res) => {
+    const tag = req.params.tag;
+    const messages = await Message.find({ room: { $regex: tag } });
+    const chatPartners = new Set();
+    messages.forEach(m => {
+        const parts = m.room.split('_');
+        if (parts.length === 2) {
+            const partner = parts.find(p => p !== tag);
+            if (partner) chatPartners.add(partner);
+        }
+    });
+    res.send(Array.from(chatPartners));
 });
 
 app.post('/search-user', async (req, res) => {
