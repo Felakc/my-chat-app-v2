@@ -2,86 +2,104 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Pro Max</title>
+    <title>Messenger Ultra Fix</title>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
-        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
-        #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
-        #auth-box input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        * { box-sizing: border-box; outline: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
         
-        #sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; display: flex; justify-content: space-between; }
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        #auth-box { background: white; padding: 40px; border-radius: 15px; width: 350px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        #auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+
+        #sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         
-        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
         
-        .msg { margin-bottom: 10px; padding: 10px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg { margin-bottom: 12px; padding: 10px 15px; border-radius: 12px; background: white; align-self: flex-start; max-width: 75%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; cursor: pointer; }
-        .del-btn { color: red; cursor: pointer; float: right; margin-left: 10px; font-size: 12px; }
+        .msg img { max-width: 100%; border-radius: 8px; display: block; margin-top: 5px; }
 
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; align-items: center; }
-        #m-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; }
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; z-index: 1000; }
+        #m-input { flex: 1; padding: 12px 18px; border: 1.5px solid #0084ff; border-radius: 25px; font-size: 16px; background: white !important; color: black !important; }
         
-        .item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
-        .item:hover { background: #f0f7ff; }
-        .group-tag { font-size: 10px; background: #0084ff; color: white; padding: 2px 6px; border-radius: 10px; }
-        
-        #file-preview { display: none; padding: 10px; background: #fff; border-top: 1px solid #ddd; }
+        .item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .item:hover { background: #f5f6f7; }
+        .item .name { flex: 1; font-weight: 500; }
+
+        .dropdown { display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 5000; overflow: hidden; }
+        .dropdown div { padding: 10px 20px; font-size: 14px; color: #333; cursor: pointer; }
+        .dropdown div:hover { background: #f0f0f0; }
+        .dropdown .danger { color: red; }
     </style>
 </head>
-<body onclick="document.querySelectorAll('.dropdown').forEach(d=>d.style.display='none')">
+<body onclick="closeAllMenus()">
 
 <div id="auth-screen">
     <div id="auth-box">
-        <h2>Messenger</h2>
+        <h2 style="color:#0084ff">Messenger</h2>
         <input type="text" id="u-name" placeholder="Логин">
         <input type="password" id="u-pass" placeholder="Пароль">
-        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
-        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Регистрация</button>
+        <button onclick="auth('login')" style="width:100%; padding:12px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Войти</button>
+        <button onclick="auth('register')" style="margin-top:15px; background:none; border:none; color:green; cursor:pointer;">Создать аккаунт</button>
     </div>
 </div>
 
 <div id="sidebar">
     <div class="sidebar-header">
         <span>Чаты</span>
-        <button onclick="createGroup()" style="font-size:12px; cursor:pointer;">+ Группа</button>
+        <button onclick="createGroup()" style="background:#fff; color:#0084ff; border:none; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:11px;">+ Группа</button>
     </div>
-    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; color:#0084ff;">Загрузка...</div>
+    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; border-bottom:1px solid #d0e3ff;">ID: ...</div>
     <div style="padding:10px; display:flex; gap:5px;">
-        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px;">
-        <button onclick="findUser()">Найти</button>
+        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:4px;">
+        <button onclick="findUser()" style="padding:8px 12px; background:#0084ff; color:white; border:none; border-radius:4px; cursor:pointer;">🔍</button>
     </div>
     <div id="user-list" style="overflow-y:auto; flex:1;"></div>
 </div>
 
 <div id="main-chat">
-    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold; display:flex; justify-content:space-between;">
-        <span id="header-name">Выберите чат</span>
-        <button id="add-mem-btn" style="display:none;" onclick="inviteToGroup()">Пригласить</button>
+    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+        <span id="header-name">Выберите, кому написать</span>
+        <button id="group-opt" style="display:none; padding:5px 10px;" onclick="inviteToGroup()">Добавить</button>
     </div>
+    
     <div id="messages"></div>
     
-    <div id="file-preview"></div>
-    
     <div id="input-area">
-        <label style="cursor:pointer; font-size:20px;">
+        <label style="cursor:pointer; font-size:20px; padding:0 5px;">
             📎 <input type="file" id="file-input" style="display:none;" onchange="handleFile(this)">
         </label>
-        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
-        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer;">></button>
+        <input type="text" id="m-input" placeholder="Напишите сообщение..." autocomplete="off">
+        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer; font-weight:bold;">></button>
     </div>
+</div>
+
+<div id="context-menu" class="dropdown">
+    <div id="menu-hide" class="danger">Удалить и скрыть</div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
     let myTag = '', currentRoom = '', selectedFile = null;
+    // Список скрытых (удаленных из списка) людей
+    let hiddenUsers = JSON.parse(localStorage.getItem('hidden-tags') || '[]');
+
+    const inputField = document.getElementById('m-input');
+
+    // ФИКС ПЕЧАТИ: Убеждаемся, что клавиши работают
+    inputField.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') {
+            send();
+        }
+    });
 
     async function auth(type) {
         const u = document.getElementById('u-name').value;
         const p = document.getElementById('u-pass').value;
+        if(!u || !p) return alert("Введите данные");
         const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
         const data = await res.json();
         if(data.status==='ok') {
@@ -90,35 +108,75 @@
             document.getElementById('auth-screen').remove();
             socket.emit('store-user', myTag);
             loadSidebar();
-        }
+        } else { alert("Ошибка входа"); }
     }
 
     async function loadSidebar() {
         const res = await fetch('/my-sidebar/'+myTag);
         const data = await res.json();
         const list = document.getElementById('user-list');
-        list.innerHTML = '<div style="font-size:11px; padding:10px; color:#888;">ЛИЧНЫЕ</div>';
+        list.innerHTML = '';
         
+        // Личные чаты
         data.privates.forEach(p => {
-            list.innerHTML += `<div class="item" onclick="openChat('${p}', true)">👤 ${p}</div>`;
+            if(hiddenUsers.includes(p)) return; // Не показываем скрытых
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `<span class="name" onclick="openChat('${p}', true)">👤 ${p}</span>
+                             <span onclick="showMenu(event, '${p}')" style="padding:5px; color:#aaa;">⋮</span>`;
+            list.appendChild(div);
         });
 
-        list.innerHTML += '<div style="font-size:11px; padding:10px; color:#888;">ГРУППЫ</div>';
+        // Группы
         data.groups.forEach(g => {
-            list.innerHTML += `
-                <div class="item">
-                    <span onclick="openChat('${g._id}', false, '${g.name}')">👥 ${g.name}</span>
-                    ${g.owner === myTag ? `<span style="color:red;" onclick="deleteGroup('${g._id}')">🗑️</span>` : ''}
-                </div>`;
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `<span class="name" onclick="openChat('${g._id}', false, '${g.name}')">👥 ${g.name}</span>
+                             ${g.owner === myTag ? `<span onclick="deleteGroup('${g._id}')" style="color:red;">🗑️</span>` : ''}`;
+            list.appendChild(div);
         });
     }
 
+    function showMenu(e, tag) {
+        e.stopPropagation();
+        const menu = document.getElementById('context-menu');
+        menu.style.display = 'block';
+        menu.style.left = e.pageX + 'px';
+        menu.style.top = e.pageY + 'px';
+        
+        document.getElementById('menu-hide').onclick = () => {
+            if(confirm(`Удалить ${tag} из списка?`)) {
+                hiddenUsers.push(tag);
+                localStorage.setItem('hidden-tags', JSON.stringify(hiddenUsers));
+                loadSidebar();
+            }
+        };
+    }
+
+    function closeAllMenus() {
+        document.getElementById('context-menu').style.display = 'none';
+    }
+
     function openChat(id, isPrivate, name = '') {
+        // Если открываем скрытого человека, убираем его из черного списка
+        if(isPrivate) {
+            hiddenUsers = hiddenUsers.filter(u => u !== id);
+            localStorage.setItem('hidden-tags', JSON.stringify(hiddenUsers));
+        }
+
         currentRoom = isPrivate ? [myTag, id].sort().join('_') : id;
         document.getElementById('header-name').innerText = isPrivate ? id : name;
         document.getElementById('messages').innerHTML = '';
-        document.getElementById('add-mem-btn').style.display = isPrivate ? 'none' : 'block';
+        document.getElementById('group-opt').style.display = isPrivate ? 'none' : 'block';
+        
         socket.emit('join room', currentRoom);
+        loadSidebar();
+        
+        // ПРИНУДИТЕЛЬНЫЙ ФОКУС ДЛЯ ПЕЧАТИ
+        setTimeout(() => {
+            inputField.focus();
+            inputField.removeAttribute('readonly');
+        }, 100);
     }
 
     function handleFile(input) {
@@ -127,25 +185,22 @@
         const reader = new FileReader();
         reader.onload = (e) => {
             selectedFile = { data: e.target.result, name: file.name, type: file.type };
-            document.getElementById('file-preview').style.display = 'block';
-            document.getElementById('file-preview').innerText = "Файл: " + file.name;
+            alert("Файл готов: " + file.name);
         };
         reader.readAsDataURL(file);
     }
 
     function send() {
-        const input = document.getElementById('m-input');
-        if((input.value.trim() || selectedFile) && currentRoom) {
+        if((inputField.value.trim() || selectedFile) && currentRoom) {
             socket.emit('chat message', {
-                room: currentRoom, sender: myTag, msg: input.value,
+                room: currentRoom, sender: myTag, msg: inputField.value,
                 file: selectedFile ? selectedFile.data : null,
                 fileName: selectedFile ? selectedFile.name : null,
                 fileType: selectedFile ? selectedFile.type : null
             });
-            input.value = '';
+            inputField.value = '';
             selectedFile = null;
-            document.getElementById('file-preview').style.display = 'none';
-            input.focus();
+            inputField.focus();
         }
     }
 
@@ -155,48 +210,44 @@
         div.id = 'msg-' + d._id;
         div.className = 'msg ' + (d.sender === myTag ? 'me' : '');
         
-        let content = `<b>${d.sender}</b><span class="del-btn" onclick="socket.emit('delete-msg', '${d._id}')">🗑️</span><br>`;
-        if(d.text) content += `<div>${d.text}</div>`;
+        let html = `<b>${d.sender}</b> <span class="del-btn" onclick="socket.emit('delete-msg', '${d._id}')">🗑️</span><br>`;
+        if(d.text) html += `<span>${d.text}</span>`;
         if(d.file) {
-            if(d.fileType.startsWith('image/')) {
-                content += `<img src="${d.file}" onclick="window.open(this.src)">`;
-            } else {
-                content += `<a href="${d.file}" download="${d.fileName}">📄 ${d.fileName}</a>`;
-            }
+            if(d.fileType.startsWith('image/')) html += `<img src="${d.file}">`;
+            else html += `<br><a href="${d.file}" download="${d.fileName}" style="font-size:12px; color:#0084ff;">📄 ${d.fileName}</a>`;
         }
-        div.innerHTML = content;
+        div.innerHTML = html;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = 99999;
     }
 
-    function createGroup() {
-        const name = prompt("Введите название группы:");
-        if(name) socket.emit('create-group', { name, owner: myTag });
-    }
-
-    function inviteToGroup() {
-        const tag = prompt("Введите ID пользователя (Имя#1234):");
-        if(tag) socket.emit('add-to-group', { groupId: currentRoom, tag });
-    }
-
-    function deleteGroup(id) {
-        if(confirm("Удалить группу и всю переписку?")) socket.emit('delete-group', id);
-    }
-
     async function findUser() {
         const tag = document.getElementById('search-input').value.trim();
+        if(!tag) return;
         const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
         const user = await res.json();
-        if(user.tag) openChat(user.tag, true); else alert("Не найден");
+        if(user.tag) openChat(user.tag, true); else alert("Пользователь не найден");
     }
 
+    // ГРУППЫ
+    function createGroup() {
+        const name = prompt("Название группы:");
+        if(name) socket.emit('create-group', { name, owner: myTag });
+    }
+    function inviteToGroup() {
+        const tag = prompt("Введите ID (Имя#1234):");
+        if(tag) socket.emit('add-to-group', { groupId: currentRoom, tag });
+    }
+    function deleteGroup(id) {
+        if(confirm("Удалить группу навсегда?")) socket.emit('delete-group', id);
+    }
+
+    // SOCKET LISTENERS
     socket.on('chat message', render);
     socket.on('chat history', h => h.forEach(render));
     socket.on('new-notification', loadSidebar);
     socket.on('msg-deleted', id => document.getElementById('msg-'+id)?.remove());
-    socket.on('group-deleted', () => { location.reload(); });
-    
-    document.getElementById('m-input').onkeydown = e => e.key==='Enter' && send();
+    socket.on('group-deleted', () => { alert("Группа удалена"); location.reload(); });
 </script>
 </body>
 </html>
