@@ -11,9 +11,9 @@ mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/cha
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
 
-// Схемы
 const User = mongoose.model('User', new mongoose.Schema({
-    username: { type: String, unique: true, required: true },
+    username: { type: String, required: true },
+    tag: { type: String, unique: true }, // Уникальный ID: Имя#1234
     password: { type: String, required: true }
 }));
 
@@ -30,34 +30,37 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-const HiddenUser = mongoose.model('HiddenUser', new mongoose.Schema({
-    owner: String,
-    hiddenUsername: String
-}));
-
 app.use(express.static(__dirname));
 app.use(express.json());
 
 const userSockets = {};
 
-// API Авторизация и Списки
+// Авторизация с выдачей тега
 app.post('/register', async (req, res) => {
-    try { await new User(req.body).save(); res.send({status:'ok'}); } catch(e) { res.send({status:'error'}); }
+    try {
+        const { username, password } = req.body;
+        const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
+        await new User({ username, tag, password }).save();
+        res.send({ status: 'ok', tag });
+    } catch(e) { res.send({ status: 'error' }); }
 });
+
 app.post('/login', async (req, res) => {
     const user = await User.findOne(req.body);
-    res.send(user ? {status:'ok'} : {status:'error'});
+    res.send(user ? { status: 'ok', tag: user.tag } : { status: 'error' });
 });
-app.get('/users', async (req, res) => {
-    const users = await User.find({}, 'username');
-    res.send(users);
+
+// Поиск пользователя по тегу
+app.post('/search-user', async (req, res) => {
+    const user = await User.findOne({ tag: req.body.tag }, 'tag');
+    res.send(user ? user : { status: 'not_found' });
 });
-app.get('/my-groups/:username', async (req, res) => {
-    const groups = await Group.find({ members: req.params.username });
+
+app.get('/my-groups/:tag', async (req, res) => {
+    const groups = await Group.find({ members: req.params.tag });
     res.send(groups);
 });
 
-// Группы и Удаление
 app.post('/create-group', async (req, res) => {
     const group = new Group(req.body);
     await group.save();
@@ -66,10 +69,10 @@ app.post('/create-group', async (req, res) => {
 });
 
 app.post('/leave-group', async (req, res) => {
-    const { groupId, username } = req.body;
+    const { groupId, tag } = req.body;
     const group = await Group.findById(groupId);
     if (group) {
-        group.members = group.members.filter(m => m !== username);
+        group.members = group.members.filter(m => m !== tag);
         group.members.length === 0 ? await Group.findByIdAndDelete(groupId) : await group.save();
     }
     res.send({ status: 'ok' });
@@ -80,19 +83,8 @@ app.delete('/messages/:id', async (req, res) => {
     res.send({ status: 'ok' });
 });
 
-app.post('/hide-user', async (req, res) => {
-    await new HiddenUser(req.body).save();
-    res.send({ status: 'ok' });
-});
-
-app.get('/hidden-users/:username', async (req, res) => {
-    const hidden = await HiddenUser.find({ owner: req.params.username });
-    res.send(hidden.map(h => h.hiddenUsername));
-});
-
-// Socket.io
 io.on('connection', (socket) => {
-    socket.on('store-user', (username) => { userSockets[username] = socket.id; });
+    socket.on('store-user', (tag) => { userSockets[tag] = socket.id; });
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => r !== socket.id && socket.leave(r));
         socket.join(room);
