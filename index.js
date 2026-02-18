@@ -17,16 +17,10 @@ const User = mongoose.model('User', new mongoose.Schema({
     password: { type: String, required: true }
 }));
 
-const Group = mongoose.model('Group', new mongoose.Schema({
-    name: String,
-    members: [String]
-}));
-
 const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
     text: String,
-    type: { type: String, default: 'text' },
     timestamp: { type: Date, default: Date.now }
 }));
 
@@ -36,19 +30,15 @@ app.use(express.json());
 const userSockets = {};
 
 app.post('/register', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const exists = await User.findOne({ username });
-        if (exists) return res.send({ status: 'error', message: 'Имя занято' });
-        const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
-        await new User({ username, tag, password }).save();
-        res.send({ status: 'ok', tag });
-    } catch(e) { res.send({ status: 'error' }); }
+    const { username, password } = req.body;
+    const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
+    await new User({ username, tag, password }).save();
+    res.send({ status: 'ok', tag });
 });
 
 app.post('/login', async (req, res) => {
     const user = await User.findOne({ username: req.body.username, password: req.body.password });
-    if (!user) return res.send({ status: 'error', message: 'Ошибка входа' });
+    if (!user) return res.send({ status: 'error' });
     if (!user.tag) {
         user.tag = `${user.username}#${Math.floor(1000 + Math.random() * 9000)}`;
         await user.save();
@@ -57,13 +47,12 @@ app.post('/login', async (req, res) => {
 });
 
 app.get('/my-chats/:tag', async (req, res) => {
-    const tag = req.params.tag;
-    const messages = await Message.find({ room: { $regex: tag } });
+    const messages = await Message.find({ room: { $regex: req.params.tag } });
     const partners = new Set();
     messages.forEach(m => {
         const parts = m.room.split('_');
         if (parts.length === 2) {
-            const partner = parts.find(p => p !== tag);
+            const partner = parts.find(p => p !== req.params.tag);
             if (partner) partners.add(partner);
         }
     });
@@ -73,22 +62,6 @@ app.get('/my-chats/:tag', async (req, res) => {
 app.post('/search-user', async (req, res) => {
     const user = await User.findOne({ tag: req.body.tag }, 'tag');
     res.send(user || { status: 'not_found' });
-});
-
-app.get('/my-groups/:tag', async (req, res) => {
-    const groups = await Group.find({ members: req.params.tag });
-    res.send(groups);
-});
-
-app.post('/create-group', async (req, res) => {
-    const group = new Group(req.body);
-    await group.save();
-    res.send(group);
-});
-
-app.delete('/messages/:id', async (req, res) => {
-    await Message.findByIdAndDelete(req.params.id);
-    res.send({ status: 'ok' });
 });
 
 io.on('connection', (socket) => {
@@ -102,23 +75,17 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chat message', async (data) => {
-        const msg = new Message({ room: data.room, username: data.sender, text: data.msg, type: data.type });
+        const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
         const saved = await msg.save();
         
-        // Отправляем всем в комнате
+        // Отправка сообщения в комнату
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        // УВЕДОМЛЕНИЕ СОБЕСЕДНИКА (чтобы у него всплыл чат)
-        const parts = data.room.split('_');
-        if(parts.length === 2) {
-            const partner = parts.find(p => p !== data.sender);
-            if(userSockets[partner]) {
-                io.to(userSockets[partner]).emit('update-sidebar');
-            }
-        }
+        // ГЛОБАЛЬНЫЙ СИГНАЛ: Заставляет всех обновить список чатов слева
+        io.emit('update-sidebar-global');
     });
 
-    socket.on('delete-msg-server', async (id) => {
+    socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
         io.emit('msg-deleted', id);
     });
@@ -128,4 +95,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server runs on port 3000'));
+server.listen(3000, () => console.log('Server OK'));

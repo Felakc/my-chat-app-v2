@@ -2,98 +2,61 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Final Fix</title>
+    <title>Messenger Final</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
-        
-        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 99999; }
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 10000; }
         #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-
+        #auth-box input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
         #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 15px; background: #0084ff; color: white; display: flex; justify-content: space-between; align-items: center; }
-        .my-tag-info { padding: 10px; background: #eef6ff; font-size: 12px; text-align: center; color: #0084ff; font-weight: bold; border-bottom: 1px solid #ddd; }
-        
-        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
-        
         .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .msg-del-btn { display: none; position: absolute; left: -25px; top: 5px; cursor: pointer; }
-        .msg.me:hover .msg-del-btn { display: block; }
-
-        .item { padding: 12px 15px; border-bottom: 1px solid #f9f9f9; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-        .menu-dots { padding: 5px; color: #aaa; cursor: pointer; font-size: 18px; }
-        .dropdown-menu { display: none; position: absolute; right: 10px; top: 35px; background: white; border: 1px solid #ddd; border-radius: 8px; z-index: 500; box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-width: 120px; }
-
-        /* САМАЯ ВАЖНАЯ ЧАСТЬ - ФИКС ПЕЧАТИ */
-        #input-area { 
-            padding: 15px; 
-            display: flex; 
-            background: white; 
-            gap: 10px; 
-            border-top: 1px solid #ddd; 
-            z-index: 999; 
-            position: relative;
-        }
-
+        .del-btn { cursor: pointer; color: red; font-size: 10px; margin-left: 8px; opacity: 0.5; }
+        .del-btn:hover { opacity: 1; }
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; }
         #m-input { 
-            flex: 1; 
-            padding: 12px 20px; 
-            border: 2px solid #0084ff; 
-            border-radius: 25px; 
-            outline: none; 
-            font-size: 16px; 
-            color: #000 !important;
-            background: #ffffff !important;
-            user-select: text !important;
-            -webkit-user-select: text !important;
-            pointer-events: auto !important;
+            flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 25px; outline: none; 
+            background: white !important; color: black !important;
         }
-
-        .send-btn { background: #0084ff; color: white; border: none; padding: 10px 25px; border-radius: 25px; cursor: pointer; font-weight: bold; }
-        .section-title { padding: 8px 15px; background: #f8f9fa; font-size: 11px; font-weight: bold; color: #888; }
+        .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .item:hover { background: #f0f7ff; }
+        .menu-dots { color: #aaa; cursor: pointer; padding: 5px; }
+        .dropdown-menu { display: none; position: absolute; background: white; border: 1px solid #ddd; padding: 5px; border-radius: 5px; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     </style>
 </head>
-<body onclick="closeAllMenus()">
+<body onclick="document.querySelectorAll('.dropdown-menu').forEach(m=>m.style.display='none')">
 
 <div id="auth-screen">
     <div id="auth-box">
         <h2>Messenger</h2>
         <input type="text" id="u-name" placeholder="Логин">
         <input type="password" id="u-pass" placeholder="Пароль">
-        <button onclick="auth('login')" style="width:100%; padding:12px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
-        <button onclick="auth('register')" style="margin-top:15px; background:none; border:none; color:#42b72a; cursor:pointer;">Регистрация</button>
+        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px;">Войти</button>
+        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Регистрация</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div class="sidebar-header">
-        <span>Чаты</span>
-        <button onclick="makeGroup()" style="background:white; color:#0084ff; border:none; padding:5px 10px; border-radius:5px; font-size:11px;">+ Группа</button>
+    <div class="sidebar-header">Чаты</div>
+    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; color:#0084ff; font-weight:bold;">ID: ...</div>
+    <div style="padding:10px; display:flex; gap:5px;">
+        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px;">
+        <button onclick="findUser()">Найти</button>
     </div>
-    <div class="my-tag-info" id="my-tag">ID: ...</div>
-    <div class="search-area" style="padding:10px; display:flex; gap:5px;">
-        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:5px;">
-        <button onclick="findUser()" style="background:#42b72a; color:white; border:none; border-radius:5px; padding:5px;">Найти</button>
-    </div>
-    <div class="section-title">ДИАЛОГИ</div>
+    <div style="font-size:11px; padding:5px 15px; color:#888;">ДИАЛОГИ</div>
     <div id="user-list"></div>
-    <div class="section-title">ГРУППЫ</div>
-    <div id="group-list"></div>
 </div>
 
 <div id="main-chat">
     <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold;">Выберите чат</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="file" id="f-in" style="display:none" onchange="sendFile(this)">
-        <button onclick="document.getElementById('f-in').click()" style="border:none; background:none; font-size:20px; cursor:pointer;">📎</button>
-        
-        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off" onmousedown="this.disabled=false; this.readOnly=false; this.focus();">
-        
-        <button class="send-btn" onclick="send()">></button>
+        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
+        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px;">></button>
     </div>
 </div>
 
@@ -103,9 +66,8 @@
     let myTag = '', currentRoom = '';
 
     async function auth(type) {
-        const u = document.getElementById('u-name').value.trim();
-        const p = document.getElementById('u-pass').value.trim();
-        if(!u || !p) return alert("Заполни поля");
+        const u = document.getElementById('u-name').value;
+        const p = document.getElementById('u-pass').value;
         const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
         const data = await res.json();
         if(data.status==='ok') {
@@ -114,74 +76,62 @@
             document.getElementById('auth-screen').style.display = 'none';
             socket.emit('store-user', myTag);
             loadSidebar();
-        } else { alert(data.message || "Ошибка!"); }
+        } else { alert("Ошибка!"); }
     }
 
     async function loadSidebar() {
-        const cRes = await fetch('/my-chats/'+myTag);
-        const chats = await cRes.json();
-        const uList = document.getElementById('user-list');
-        uList.innerHTML = '';
+        const res = await fetch('/my-chats/'+myTag);
+        const chats = await res.json();
+        const list = document.getElementById('user-list');
+        list.innerHTML = '';
         chats.forEach(partner => {
             const div = document.createElement('div');
             div.className = 'item';
             div.innerHTML = `<span onclick="openPriv('${partner}')">👤 ${partner}</span>
-                <div class="menu-dots" onclick="toggleMenu(event, 'm-${partner}')">⋮</div>
+                <div class="menu-dots" onclick="showMenu(event, '${partner}')">⋮</div>
                 <div id="m-${partner}" class="dropdown-menu"><div onclick="this.parentElement.parentElement.remove()">Скрыть</div></div>`;
-            uList.appendChild(div);
-        });
-
-        const gRes = await fetch('/my-groups/'+myTag);
-        const groups = await gRes.json();
-        const gList = document.getElementById('group-list');
-        gList.innerHTML = '';
-        groups.forEach(g => {
-            const div = document.createElement('div');
-            div.className = 'item';
-            div.innerHTML = `<span onclick="openG('${g._id}','${g.name}')">👥 ${g.name}</span>`;
-            gList.appendChild(div);
+            list.appendChild(div);
         });
     }
 
-    function toggleMenu(e, id) { e.stopPropagation(); closeAllMenus(); document.getElementById(id).style.display = 'block'; }
-    function closeAllMenus() { document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none'); }
+    function showMenu(e, id) {
+        e.stopPropagation();
+        const m = document.getElementById('m-'+id);
+        m.style.display = 'block';
+        m.style.left = e.pageX + 'px';
+        m.style.top = e.pageY + 'px';
+    }
 
-    function openPriv(t) { currentRoom = [myTag, t].sort().join('_'); startChat(t); }
-    function openG(id, n) { currentRoom = id; startChat(n); }
-    function startChat(n) {
-        document.getElementById('chat-header').innerText = n;
+    function openPriv(t) {
+        currentRoom = [myTag, t].sort().join('_');
+        document.getElementById('chat-header').innerText = t;
         document.getElementById('messages').innerHTML = '';
         socket.emit('join room', currentRoom);
-        // Принудительный фокус
-        setTimeout(() => {
-            const inp = document.getElementById('m-input');
-            inp.focus();
-        }, 100);
+        setTimeout(() => document.getElementById('m-input').focus(), 100);
     }
 
     function send() {
         const input = document.getElementById('m-input');
         if(input.value.trim() && currentRoom) {
-            socket.emit('chat message', { room: currentRoom, msg: input.value.trim(), sender: myTag, type: 'text' });
+            socket.emit('chat message', { room: currentRoom, msg: input.value, sender: myTag });
             input.value = '';
             input.focus();
         }
     }
 
     function render(d) {
+        if(document.getElementById('msg-'+d._id)) return;
         const div = document.createElement('div');
-        div.id = 'msg-' + (d._id || d.id);
-        const user = d.sender || d.username;
-        div.className = 'msg ' + (user === myTag ? 'me' : '');
-        let del = user === myTag ? `<span class="msg-del-btn" onclick="socket.emit('delete-msg-server', '${d._id}')">🗑️</span>` : '';
-        div.innerHTML = `${del}<b>${user}</b><br>${d.msg || d.text}`;
+        div.id = 'msg-' + d._id;
+        div.className = 'msg ' + (d.sender === myTag ? 'me' : '');
+        let del = d.sender === myTag ? `<span class="del-btn" onclick="socket.emit('delete-msg', '${d._id}')">🗑️</span>` : '';
+        div.innerHTML = `<b>${d.sender}</b>${del}<br>${d.msg || d.text}`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = 99999;
     }
 
     async function findUser() {
-        const tag = document.getElementById('search-input').value.trim();
-        if(!tag || tag === myTag) return;
+        const tag = document.getElementById('search-input').value;
         const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
         const user = await res.json();
         if(user.tag) openPriv(user.tag); else alert("Не найден");
@@ -189,18 +139,15 @@
 
     socket.on('chat message', (d) => {
         if(d.room === currentRoom) render(d);
-        loadSidebar(); 
+        loadSidebar();
     });
-    socket.on('update-sidebar', loadSidebar);
-    socket.on('chat history', h => h.forEach(render));
-    socket.on('msg-deleted', (id) => { const el = document.getElementById('msg-'+id); if(el) el.remove(); });
 
-    // Обработка Enter
-    document.getElementById('m-input').addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') {
-            send();
-        }
-    });
+    socket.on('update-sidebar-global', loadSidebar);
+
+    socket.on('chat history', h => h.forEach(render));
+    socket.on('msg-deleted', id => { const el = document.getElementById('msg-'+id); if(el) el.remove(); });
+    
+    document.getElementById('m-input').onkeydown = e => e.key==='Enter' && send();
 </script>
 </body>
 </html>
