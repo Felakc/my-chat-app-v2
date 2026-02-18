@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Messenger Stable</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
+        
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100000; }
+        #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #auth-box input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+
+        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 10; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
+        
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
+
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; z-index: 999; }
+        #m-input { 
+            flex: 1; padding: 12px 15px; border: 2px solid #0084ff; border-radius: 25px; outline: none; 
+            font-size: 16px; background: white !important; color: black !important;
+        }
+
+        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg.me { align-self: flex-end; background: #dcf8c6; }
+        
+        .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        .item:hover { background: #f0f7ff; }
+        
+        .menu-dots { color: #aaa; cursor: pointer; padding: 5px; font-size: 18px; }
+        .dropdown-menu { 
+            display: none; position: absolute; right: 10px; top: 40px; background: white; 
+            border: 1px solid #ddd; border-radius: 8px; z-index: 500; box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .dropdown-menu div { padding: 10px 15px; color: red; font-size: 13px; cursor: pointer; }
+    </style>
+</head>
+<body onclick="hideAllMenus()">
+
+<div id="auth-screen">
+    <div id="auth-box">
+        <h2>Messenger</h2>
+        <input type="text" id="u-name" placeholder="Логин">
+        <input type="password" id="u-pass" placeholder="Пароль">
+        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
+        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Регистрация</button>
+    </div>
+</div>
+
+<div id="sidebar">
+    <div class="sidebar-header">Чаты</div>
+    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; color:#0084ff; font-weight:bold;">ID: ...</div>
+    <div style="padding:10px; display:flex; gap:5px;">
+        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px;">
+        <button onclick="findUser()">Найти</button>
+    </div>
+    <div style="font-size:11px; padding:5px 15px; color:#888;">ДИАЛОГИ</div>
+    <div id="user-list"></div>
+</div>
+
+<div id="main-chat">
+    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold;">Выберите чат</div>
+    <div id="messages"></div>
+    <div id="input-area">
+        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
+        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer;">></button>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    let myTag = '', currentRoom = '';
+    // Список скрытых пользователей (сохраняется в браузере)
+    let hiddenUsers = JSON.parse(localStorage.getItem('hidden-chats') || '[]');
+
+    async function auth(type) {
+        const u = document.getElementById('u-name').value;
+        const p = document.getElementById('u-pass').value;
+        const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
+        const data = await res.json();
+        if(data.status==='ok') {
+            myTag = data.tag;
+            document.getElementById('my-tag').innerText = "Ваш ID: " + myTag;
+            document.getElementById('auth-screen').remove();
+            socket.emit('store-user', myTag);
+            loadSidebar();
+        } else { alert("Ошибка!"); }
+    }
+
+    async function loadSidebar() {
+        const res = await fetch('/my-chats/'+myTag);
+        const chats = await res.json();
+        const list = document.getElementById('user-list');
+        list.innerHTML = '';
+
+        chats.forEach(partner => {
+            // ФИЛЬТР: Если пользователь в скрытых и это НЕ тот, с кем сейчас открыт чат - не рисуем
+            if (hiddenUsers.includes(partner) && currentRoom !== [myTag, partner].sort().join('_')) {
+                return;
+            }
+
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `
+                <span onclick="openPriv('${partner}')" style="flex:1">👤 ${partner}</span>
+                <div class="menu-dots" onclick="toggleMenu(event, '${partner}')">⋮</div>
+                <div id="menu-${partner}" class="dropdown-menu">
+                    <div onclick="hideChat('${partner}')">Скрыть диалог</div>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    // Функция скрытия
+    function hideChat(tag) {
+        if (!hiddenUsers.includes(tag)) {
+            hiddenUsers.push(tag);
+            localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
+        }
+        loadSidebar();
+    }
+
+    function toggleMenu(e, tag) {
+        e.stopPropagation();
+        hideAllMenus();
+        document.getElementById('menu-'+tag).style.display = 'block';
+    }
+
+    function hideAllMenus() {
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+    }
+
+    function openPriv(t) {
+        // Если мы открываем скрытого вручную - убираем его из скрытых
+        hiddenUsers = hiddenUsers.filter(u => u !== t);
+        localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
+        
+        currentRoom = [myTag, t].sort().join('_');
+        document.getElementById('chat-header').innerText = t;
+        document.getElementById('messages').innerHTML = '';
+        socket.emit('join room', currentRoom);
+        setTimeout(() => document.getElementById('m-input').focus(), 100);
+        loadSidebar();
+    }
+
+    function send() {
+        const input = document.getElementById('m-input');
+        if(input.value.trim() && currentRoom) {
+            socket.emit('chat message', { room: currentRoom, msg: input.value, sender: myTag });
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    function render(d) {
+        if(document.getElementById('msg-'+d._id)) return;
+        const div = document.createElement('div');
+        div.id = 'msg-' + d._id;
+        div.className = 'msg ' + (d.sender === myTag ? 'me' : '');
+        div.innerHTML = `<b>${d.sender}</b><br>${d.msg || d.text}`;
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = 99999;
+    }
+
+    async function findUser() {
+        const tag = document.getElementById('search-input').value;
+        const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
+        const user = await res.json();
+        if(user.tag) openPriv(user.tag); else alert("Не найден");
+    }
+
+    socket.on('chat message', (d) => {
+        if(d.room === currentRoom) render(d);
+        
+        // Когда приходит сообщение от скрытого, он ДОЛЖЕН появиться (как в ТГ)
+        // Если хочешь, чтобы он ВООБЩЕ не появлялся, убери строку ниже:
+        const partner = d.room.split('_').find(p => p !== myTag);
+        if (partner) {
+             hiddenUsers = hiddenUsers.filter(u => u !== partner);
+             localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
+        }
+
+        loadSidebar();
+    });
+
+    socket.on('update-sidebar-global', loadSidebar);
+    socket.on('chat history', h => h.forEach(render));
+    document.getElementById('m-input').onkeydown = e => { if(e.key==='Enter') send(); };
+</script>
+</body>
+</html>
