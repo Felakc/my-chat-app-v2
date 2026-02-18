@@ -1,13 +1,37 @@
-const { app, BrowserWindow } = require('electron');
-require('./index.js'); // Запуск сервера
+// main.js - Управляет окном приложения Electron
 
-function createWindow() {
-  const win = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    webPreferences: { nodeIntegration: true, contextIsolation: false }
+const { app, BrowserWindow } = require('electron');
+
+// 🚨 ВАШ РАБОЧИЙ АДРЕС НА RENDER:
+const URL_CHAT_APP = 'https://my-chat-app-v2-uzje.onrender.com'; 
+
+function createWindow () {
+  // Создаем стандартное окно для ПК
+  const mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      // Это стандартные настройки безопасности
+      nodeIntegration: false,
+      contextIsolation: true
+    }
   });
-  win.loadFile('index.html');
+
+  // Загружаем ваш чат с Render
+  mainWindow.loadURL(URL_CHAT_APP);
 }
 
-app.whenReady().then(createWindow);
+// Запуск приложения, когда Electron готов
+app.whenReady().then(() => {
+  createWindow();
+  
+  app.on('activate', function () {
+    // Для macOS: если нет окон, создаем новое
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+// Закрытие приложения, когда все окна закрыты
+app.on('window-all-closed', function () {
+  if (process.platform !== 'darwin') app.quit();
+});
