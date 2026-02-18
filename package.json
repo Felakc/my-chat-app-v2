@@ -1,33 +1,15 @@
 {
   "name": "my-chat-app",
   "version": "1.0.0",
-  "description": "Secure Chat App with MongoDB and Electron support",
-  "main": "main.js",
+  "description": "Secure Chat App Server",
+  "main": "index.js",
   "scripts": {
-    "start": "electron .",
-    "server": "node index.js",
-    "dist": "electron-builder --win --x64",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
     "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
     "socket.io": "^4.7.2"
-  },
-  "devDependencies": {
-    "electron": "^28.2.0",
-    "electron-builder": "^24.9.1"
-  },
-  "build": {
-    "appId": "com.felak.mychatapp",
-    "win": {
-      "target": "portable",
-      "icon": "icon.ico"
-    },
-    "directories": {
-      "output": "release-builds"
-    }
   }
 }
