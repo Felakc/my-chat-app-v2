@@ -13,7 +13,7 @@ mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/cha
 
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
-    tag: { type: String, unique: true }, // Уникальный ID: Имя#1234
+    tag: { type: String, unique: true, sparse: true }, 
     password: { type: String, required: true }
 }));
 
@@ -35,22 +35,37 @@ app.use(express.json());
 
 const userSockets = {};
 
-// Авторизация с выдачей тега
+// РЕГИСТРАЦИЯ (Всегда создает тег)
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
+        if(!username || !password) return res.send({ status: 'error', message: 'Заполни все поля!' });
+        
+        const exists = await User.findOne({ username });
+        if (exists) return res.send({ status: 'error', message: 'Имя уже занято' });
+
         const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
         await new User({ username, tag, password }).save();
         res.send({ status: 'ok', tag });
-    } catch(e) { res.send({ status: 'error' }); }
+    } catch(e) { res.send({ status: 'error', message: 'Ошибка базы' }); }
 });
 
+// ЛОГИН (Чинит старые аккаунты)
 app.post('/login', async (req, res) => {
-    const user = await User.findOne(req.body);
-    res.send(user ? { status: 'ok', tag: user.tag } : { status: 'error' });
+    try {
+        const user = await User.findOne({ username: req.body.username, password: req.body.password });
+        if (!user) return res.send({ status: 'error', message: 'Неверный логин или пароль' });
+
+        // Если это старый акк без тега — создаем его прямо сейчас
+        if (!user.tag) {
+            user.tag = `${user.username}#${Math.floor(1000 + Math.random() * 9000)}`;
+            await user.save();
+        }
+
+        res.send({ status: 'ok', tag: user.tag });
+    } catch (e) { res.send({ status: 'error' }); }
 });
 
-// Поиск пользователя по тегу
 app.post('/search-user', async (req, res) => {
     const user = await User.findOne({ tag: req.body.tag }, 'tag');
     res.send(user ? user : { status: 'not_found' });
