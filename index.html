@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Pro</title>
+    <title>Мой чат</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
@@ -43,7 +43,7 @@
         <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px;">
         <button onclick="findUser()">Найти</button>
     </div>
-    <button onclick="createGroup()" style="margin: 0 10px 10px; cursor:pointer;">+ Создать группу</button>
+    <button onclick="createGroup()" style="margin: 0 10px 10px; cursor:pointer; padding:5px; background:#f0f0f0; border:1px solid #ccc; border-radius:5px;">+ Создать группу</button>
     <div style="font-size:11px; padding:5px 15px; color:#888;">ДИАЛОГИ И ГРУППЫ</div>
     <div id="user-list"></div>
 </div>
@@ -89,7 +89,7 @@
         const list = document.getElementById('user-list');
         list.innerHTML = '';
 
-        // Группы
+        // Группы 
         data.groups.forEach(g => {
             const div = document.createElement('div');
             div.className = 'item';
@@ -97,7 +97,7 @@
             list.appendChild(div);
         });
 
-        // Личные чаты [cite: 44]
+        // Личные чаты 
         const allPartners = Array.from(new Set([...data.partners, ...foundUsers]));
         allPartners.forEach(partner => {
             if (hiddenUsers.includes(partner)) return;
@@ -114,7 +114,7 @@
 
     async function createGroup() {
         const name = prompt("Название группы:");
-        const invite = prompt("ID участника для добавления (через запятую):");
+        const invite = prompt("ID участника (Напр: User#1234). Можно несколько через запятую:");
         if(name) {
             const members = invite ? invite.split(',').map(s => s.trim()) : [];
             await fetch('/create-group', {
@@ -169,7 +169,6 @@
         const sender = d.sender || d.username;
         div.className = 'msg ' + (sender === myTag ? 'me' : '');
         
-        // Кнопка удаления только для своих сообщений
         const delBtn = sender === myTag ? `<span class="delete-btn" onclick="deleteMsg('${id}')">✕</span>` : '';
         
         div.innerHTML = `<b>${sender}</b> ${delBtn}<br>${d.msg || d.text}`;
@@ -186,9 +185,25 @@
         if(el) el.remove();
     });
 
+    // Важное исправление: когда кто-то пишет нам, добавляем его в список 
+    socket.on('new-chat-notification', (data) => {
+        if(!foundUsers.includes(data.from)) {
+            foundUsers.push(data.from);
+            sessionStorage.setItem('found-users', JSON.stringify(foundUsers));
+        }
+        // Убираем из скрытых, если он там был 
+        hiddenUsers = hiddenUsers.filter(u => u !== data.from);
+        localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
+        loadSidebar(); // Перерисовываем боковую панель
+    });
+
     socket.on('chat message', (d) => {
-        if(d.room === currentRoom) render(d);
-        loadSidebar();
+        if(d.room === currentRoom) {
+            render(d);
+        } else {
+            // Если сообщение пришло в другой чат, обновляем сайдбар, чтобы чат появился
+            loadSidebar();
+        }
     });
 
     socket.on('chat history', h => h.forEach(render));
