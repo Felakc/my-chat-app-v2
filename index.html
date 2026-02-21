@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>мой чат</title>
+    <title>Мой Чат</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
@@ -98,7 +98,7 @@
         const list = document.getElementById('user-list');
         list.innerHTML = '';
 
-        // Группы
+        // Группы (Синие)
         if(data.groups) {
             data.groups.forEach(g => {
                 const div = document.createElement('div');
@@ -108,7 +108,7 @@
             });
         }
 
-        // Личные
+        // Личные чаты
         const allPartners = Array.from(new Set([...data.partners, ...foundUsers]));
         allPartners.forEach(p => {
             if (hiddenUsers.includes(p)) return;
@@ -142,13 +142,18 @@
         const name = document.getElementById('g-name').value;
         const members = Array.from(document.querySelectorAll('.g-chk:checked')).map(c => c.value);
         if(!name) return alert("Введите имя группы");
-        await fetch('/create-group', {
+        
+        const res = await fetch('/create-group', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ name, members, admin: myTag })
         });
-        document.getElementById('group-modal').style.display = 'none';
-        loadSidebar();
+        const result = await res.json();
+        if(result.status === 'ok') {
+            document.getElementById('group-modal').style.display = 'none';
+            document.getElementById('g-name').value = '';
+            loadSidebar();
+        }
     }
 
     function openPriv(t) {
@@ -171,9 +176,10 @@
     }
 
     function render(d) {
-        if(document.getElementById('msg-'+(d._id || d.id))) return;
+        const msgId = d._id || d.id;
+        if(document.getElementById('msg-'+msgId)) return;
         const div = document.createElement('div');
-        div.id = 'msg-' + (d._id || d.id);
+        div.id = 'msg-' + msgId;
         const sender = d.sender || d.username;
         div.className = 'msg ' + (sender === myTag ? 'me' : '');
         div.innerHTML = `<b>${sender}</b><br>${d.msg || d.text}`;
@@ -193,14 +199,13 @@
         document.getElementById('menu-'+tag).style.display = 'block';
     }
 
-    // ВАЖНО: Слушаем уведомления о новых сообщениях
     socket.on('new-chat-notification', (data) => {
         if(!foundUsers.includes(data.from)) {
             foundUsers.push(data.from);
             sessionStorage.setItem('found-users', JSON.stringify(foundUsers));
         }
         hiddenUsers = hiddenUsers.filter(u => u !== data.from);
-        loadSidebar(); // Перерисовываем список чатов сразу!
+        loadSidebar();
     });
 
     socket.on('chat message', (d) => {

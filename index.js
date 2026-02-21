@@ -51,10 +51,16 @@ app.post('/login', async (req, res) => {
 app.post('/create-group', async (req, res) => {
     try {
         const { name, members, admin } = req.body;
-        const group = new Group({ name, members: [...members, admin], admin });
+        // Важно: добавляем админа в список участников, если его там нет
+        const allMembers = Array.from(new Set([...members, admin]));
+        const group = new Group({ name, members: allMembers, admin });
         await group.save();
+        console.log(`Группа "${name}" создана пользователем ${admin}`);
         res.send({ status: 'ok' });
-    } catch (e) { res.send({ status: 'error' }); }
+    } catch (e) { 
+        console.error("Ошибка создания группы:", e);
+        res.send({ status: 'error' }); 
+    }
 });
 
 app.get('/my-chats/:tag', async (req, res) => {
@@ -70,7 +76,6 @@ app.get('/my-chats/:tag', async (req, res) => {
             if (partner) partners.add(partner);
         }
     });
-    // Отправляем объект с данными
     res.send({ partners: Array.from(partners), groups });
 });
 
@@ -97,10 +102,11 @@ io.on('connection', (socket) => {
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        // Уведомление партнера (чтобы сообщение появилось сразу)
         if (data.room.includes('_')) {
             const partner = data.room.split('_').find(p => p !== data.sender);
-            io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+            if (partner) {
+                io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+            }
         }
     });
 
@@ -110,4 +116,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server OK'));
+server.listen(3000, () => console.log('Server OK on port 3000'));
