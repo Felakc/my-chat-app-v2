@@ -2,58 +2,51 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Pro</title>
+    <title>Мой чат</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
-        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 999999; }
         #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         #auth-box input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 15px; background: #0084ff; color: white; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
         #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
-        .msg { margin-bottom: 10px; padding: 10px; border-radius: 12px; background: white; align-self: flex-start; max-width: 75%; position: relative; }
+        .msg { margin-bottom: 12px; padding: 10px 15px; border-radius: 12px; background: white; align-self: flex-start; max-width: 75%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .del-btn { color: red; cursor: pointer; float: right; font-size: 12px; margin-left: 10px; display: none; }
-        .msg:hover .del-btn { display: inline; }
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; }
-        #m-input { flex: 1; padding: 12px; border: 1.5px solid #0084ff; border-radius: 25px; outline: none; }
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; align-items: center; border-top: 1px solid #ddd; }
+        #m-input { flex: 1; padding: 12px 18px; border: 1.5px solid #0084ff; border-radius: 25px; outline: none; font-size: 16px; }
         .item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .item:hover { background: #f5f6f7; }
-        .group-tag { font-size: 10px; background: #eee; padding: 2px 5px; border-radius: 4px; }
+        .hide-btn { color: #ccc; cursor: pointer; font-size: 18px; padding: 0 5px; }
+        .hide-btn:hover { color: red; }
     </style>
 </head>
 <body onclick="document.querySelectorAll('.dropdown-menu').forEach(m=>m.style.display='none')">
 
 <div id="auth-screen">
     <div id="auth-box">
-        <h2 style="color:#0084ff">Messenger</h2>
+        <h2 style="color:#0084ff; margin-top:0;">Messenger</h2>
         <input type="text" id="u-name" placeholder="Логин">
         <input type="password" id="u-pass" placeholder="Пароль">
-        <button onclick="auth('login')" style="width:100%; padding:12px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
-        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Создать аккаунт</button>
+        <button onclick="auth('login')" style="width:100%; padding:12px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Войти</button>
+        <button onclick="auth('register')" style="margin-top:15px; background:none; border:none; color:green; cursor:pointer;">Создать аккаунт</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div class="sidebar-header">
-        <span>Чаты</span>
-        <button onclick="createGroup()" style="background:none; border:1px solid white; color:white; border-radius:4px; cursor:pointer; font-size:12px;">+ Группа</button>
-    </div>
-    <div id="my-tag" style="padding:10px; font-size:11px; text-align:center; background:#eef6ff;">ID: ...</div>
+    <div class="sidebar-header">Чаты</div>
+    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; border-bottom:1px solid #d0e3ff;">ID: ...</div>
     <div style="padding:10px; display:flex; gap:5px;">
-        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px; border:1px solid #ddd; border-radius:4px;">
-        <button onclick="findUser()" style="padding:5px 10px; background:#0084ff; color:white; border:none; border-radius:4px; cursor:pointer;">🔍</button>
+        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:4px;">
+        <button onclick="findUser()" style="padding:8px 12px; background:#0084ff; color:white; border:none; border-radius:4px; cursor:pointer;">🔍</button>
     </div>
     <div id="user-list" style="overflow-y:auto; flex:1;"></div>
 </div>
 
 <div id="main-chat">
-    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
-        <span id="chat-title">Выберите чат</span>
-        <button id="add-member-btn" style="display:none; font-size:12px;" onclick="addMember()">+ Пригласить</button>
-    </div>
+    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold; color:#333;">Выберите, кому написать</div>
     <div id="messages"></div>
     <div id="input-area">
         <input type="text" id="m-input" placeholder="Напишите сообщение..." autocomplete="off">
@@ -64,12 +57,14 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    let myTag = '', currentRoom = '', isGroup = false;
-    let foundUsers = [];
+    let myTag = '', currentRoom = '';
+    let foundUsers = JSON.parse(sessionStorage.getItem('found-users') || '[]');
+    let hiddenUsers = JSON.parse(localStorage.getItem('hidden-chats') || '[]');
 
     async function auth(type) {
         const u = document.getElementById('u-name').value;
         const p = document.getElementById('u-pass').value;
+        if(!u || !p) return alert("Заполните поля");
         const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
         const data = await res.json();
         if(data.status==='ok') {
@@ -78,51 +73,39 @@
             document.getElementById('auth-screen').remove();
             socket.emit('store-user', myTag);
             loadSidebar();
-        } else { alert("Ошибка!"); }
+        } else { alert("Ошибка авторизации"); }
     }
 
     async function loadSidebar() {
         const res = await fetch('/my-sidebar/' + myTag);
-        const data = await res.json();
+        const partners = await res.json();
         const list = document.getElementById('user-list');
         list.innerHTML = '';
         
-        // Личные чаты
-        const allPrivates = [...new Set([...data.privates, ...foundUsers])];
-        allPrivates.forEach(u => {
+        const allUsers = [...new Set([...partners, ...foundUsers])];
+        allUsers.forEach(u => {
+            if (hiddenUsers.includes(u)) return;
             const div = document.createElement('div');
             div.className = 'item';
-            div.innerHTML = `<span onclick="openPriv('${u}')">👤 ${u}</span>`;
-            list.appendChild(div);
-        });
-
-        // Групповые чаты
-        data.groups.forEach(g => {
-            const div = document.createElement('div');
-            div.className = 'item';
-            div.innerHTML = `<span onclick="openGroup('${g._id}', '${g.name}')">👥 ${g.name}</span> <span class="group-tag">Группа</span>`;
+            div.innerHTML = `
+                <span onclick="openPriv('${u}')" style="flex:1">👤 ${u}</span>
+                <span class="hide-btn" onclick="hideChat(event, '${u}')">✕</span>
+            `;
             list.appendChild(div);
         });
     }
 
     function openPriv(tag) {
         currentRoom = [myTag, tag].sort().join('_');
-        isGroup = false;
-        document.getElementById('chat-title').innerText = "Чат с " + tag;
-        document.getElementById('add-member-btn').style.display = 'none';
+        document.getElementById('chat-header').innerText = "Чат с " + tag;
         document.getElementById('messages').innerHTML = '';
         socket.emit('join room', currentRoom);
-        setTimeout(() => document.getElementById('m-input').focus(), 100);
-    }
-
-    function openGroup(id, name) {
-        currentRoom = id;
-        isGroup = true;
-        document.getElementById('chat-title').innerText = "Группа: " + name;
-        document.getElementById('add-member-btn').style.display = 'block';
-        document.getElementById('messages').innerHTML = '';
-        socket.emit('join room', currentRoom);
-        setTimeout(() => document.getElementById('m-input').focus(), 100);
+        
+        // ФИКС ПЕЧАТИ: разблокировка и фокус
+        const input = document.getElementById('m-input');
+        input.disabled = false;
+        input.value = '';
+        setTimeout(() => input.focus(), 100);
     }
 
     function send() {
@@ -130,56 +113,67 @@
         if(input.value.trim() && currentRoom) {
             socket.emit('chat message', { room: currentRoom, sender: myTag, msg: input.value });
             input.value = '';
+            input.focus();
         }
     }
 
-    function deleteMsg(id) {
-        if(confirm("Удалить сообщение?")) {
-            socket.emit('delete-msg', id);
+    function hideChat(e, tag) {
+        e.stopPropagation();
+        if(confirm("Скрыть чат с " + tag + "?")) {
+            hiddenUsers.push(tag);
+            localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
+            loadSidebar();
+            if(currentRoom.includes(tag)) {
+                document.getElementById('chat-header').innerText = "Выберите чат";
+                document.getElementById('messages').innerHTML = '';
+                currentRoom = '';
+            }
         }
-    }
-
-    function render(d) {
-        if(document.getElementById('msg-'+ d._id)) return;
-        const div = document.createElement('div');
-        div.id = 'msg-' + d._id;
-        const sender = d.sender || d.username;
-        div.className = 'msg ' + (sender === myTag ? 'me' : '');
-        div.innerHTML = `
-            <b>${sender}</b> ${sender === myTag ? `<span class="del-btn" onclick="deleteMsg('${d._id}')">🗑️</span>` : ''}
-            <br>${d.msg || d.text}
-        `;
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = 99999;
-    }
-
-    function createGroup() {
-        const name = prompt("Введите название группы:");
-        if(name) socket.emit('create-group', { name, owner: myTag });
-    }
-
-    function addMember() {
-        const tag = prompt("Введите ID участника (Имя#1234):");
-        if(tag) socket.emit('add-to-group', { groupId: currentRoom, tag });
     }
 
     async function findUser() {
         const tag = document.getElementById('search-input').value.trim();
+        if(!tag || tag === myTag) return;
         const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
         const data = await res.json();
-        if(data.tag && !foundUsers.includes(data.tag)) {
-            foundUsers.push(data.tag);
+        if(data.tag) {
+            if(!foundUsers.includes(data.tag)) {
+                foundUsers.push(data.tag);
+                sessionStorage.setItem('found-users', JSON.stringify(foundUsers));
+            }
+            hiddenUsers = hiddenUsers.filter(u => u !== data.tag);
+            localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
             loadSidebar();
             openPriv(data.tag);
-        } else if(!data.tag) alert("Не найден");
+        } else { alert("Пользователь не найден"); }
+    }
+
+    function render(d) {
+        if(document.getElementById('msg-'+ (d._id || d.id))) return;
+        const div = document.createElement('div');
+        div.id = 'msg-' + (d._id || d.id);
+        const sender = d.sender || d.username;
+        div.className = 'msg ' + (sender === myTag ? 'me' : '');
+        div.innerHTML = `<b>${sender}</b><br>${d.msg || d.text}`;
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = 99999;
     }
 
     socket.on('chat message', render);
     socket.on('chat history', h => h.forEach(render));
-    socket.on('msg-deleted', id => document.getElementById('msg-'+id)?.remove());
-    socket.on('new-chat-notification', loadSidebar);
+    socket.on('new-chat-notification', (data) => {
+        if(!foundUsers.includes(data.from)) {
+            foundUsers.push(data.from);
+            sessionStorage.setItem('found-users', JSON.stringify(foundUsers));
+        }
+        hiddenUsers = hiddenUsers.filter(u => u !== data.from);
+        localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
+        loadSidebar();
+    });
 
-    document.getElementById('m-input').addEventListener('keypress', e => { if(e.key === 'Enter') send(); });
+    document.getElementById('m-input').addEventListener('keypress', e => {
+        if(e.key === 'Enter') send();
+    });
 </script>
 </body>
 </html>
