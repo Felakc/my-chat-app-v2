@@ -24,6 +24,7 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
+// МОДЕЛЬ ДЛЯ ГРУПП
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     members: [String],
@@ -48,21 +49,20 @@ app.post('/login', async (req, res) => {
     res.send({ status: 'ok', tag: user.tag });
 });
 
+// СОЗДАНИЕ ГРУППЫ
 app.post('/create-group', async (req, res) => {
     try {
         const { name, members, admin } = req.body;
-        // Важно: добавляем админа в список участников, если его там нет
         const allMembers = Array.from(new Set([...members, admin]));
         const group = new Group({ name, members: allMembers, admin });
         await group.save();
-        console.log(`Группа "${name}" создана пользователем ${admin}`);
         res.send({ status: 'ok' });
-    } catch (e) { 
-        console.error("Ошибка создания группы:", e);
-        res.send({ status: 'error' }); 
+    } catch (e) {
+        res.send({ status: 'error' });
     }
 });
 
+// ПОЛУЧЕНИЕ ЧАТОВ (ИСПРАВЛЕНО: возвращает и личные, и группы)
 app.get('/my-chats/:tag', async (req, res) => {
     const myTag = req.params.tag;
     const messages = await Message.find({ room: { $regex: myTag } });
@@ -104,9 +104,7 @@ io.on('connection', (socket) => {
 
         if (data.room.includes('_')) {
             const partner = data.room.split('_').find(p => p !== data.sender);
-            if (partner) {
-                io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
-            }
+            io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
         }
     });
 
@@ -116,4 +114,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server OK on port 3000'));
+server.listen(3000, () => console.log('Server OK'));
