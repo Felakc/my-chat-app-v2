@@ -24,7 +24,7 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-// Схема Групп
+// Новая схема для Групп
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     members: [String],
@@ -49,21 +49,16 @@ app.post('/login', async (req, res) => {
     res.send({ status: 'ok', tag: user.tag });
 });
 
-// Создание группы
+// Маршрут создания группы
 app.post('/create-group', async (req, res) => {
-    try {
-        const { name, members, admin } = req.body;
-        // ВАЖНО: объединяем выбранных людей и админа
-        const allMembers = Array.from(new Set([...members, admin]));
-        const group = new Group({ name, members: allMembers, admin });
-        await group.save();
-        res.send({ status: 'ok' });
-    } catch (e) {
-        res.send({ status: 'error' });
-    }
+    const { name, members, admin } = req.body;
+    const allMembers = Array.from(new Set([...members, admin]));
+    const group = new Group({ name, members: allMembers, admin });
+    await group.save();
+    res.send({ status: 'ok' });
 });
 
-// Получение чатов и групп (Исправленный маршрут)
+// Исправленный маршрут получения чатов
 app.get('/my-chats/:tag', async (req, res) => {
     const myTag = req.params.tag;
     const messages = await Message.find({ room: { $regex: myTag } });
@@ -77,7 +72,6 @@ app.get('/my-chats/:tag', async (req, res) => {
             if (partner) partners.add(partner);
         }
     });
-    // Отправляем объект с группами и личными чатами
     res.send({ partners: Array.from(partners), groups });
 });
 
@@ -112,8 +106,8 @@ io.on('connection', (socket) => {
 
     socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
-        io.emit('msg-deleted', id); 
+        io.emit('msg-deleted', id);
     });
 });
 
-server.listen(3000, () => console.log('Server running on port 3000'));
+server.listen(3000, () => console.log('Server OK'));

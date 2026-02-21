@@ -2,43 +2,45 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Group & Delete</title>
+    <title>Messenger Final</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
-        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 999999; }
         #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         #auth-box input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+
+        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; }
         .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
         
-        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
+        .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        .group-item { background: #f0f7ff !important; border-left: 4px solid #0084ff; font-weight: bold; }
+
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
         
-        .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .group-item { background: #f0f7ff !important; border-left: 4px solid #0084ff; font-weight: bold; }
-        
-        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; }
+        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
+
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; z-index: 2000; }
+        #m-input { flex: 1; padding: 12px 15px; border: 2px solid #0084ff; border-radius: 25px; outline: none; font-size: 16px; }
+
+        /* Иконка самолетика вместо скрепки */
+        .send-btn { background: #0084ff; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         
-        .delete-btn { color: red; cursor: pointer; font-size: 10px; margin-left: 8px; visibility: hidden; }
-        .msg.me:hover .delete-btn { visibility: visible; }
-        
-        /* Модалка групп */
-        #group-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
-        .modal-content { background:white; padding:20px; border-radius:12px; width:300px; }
-        .user-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f0f0f0; }
-        
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; }
-        #m-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+        .dropdown-menu { display: none; position: absolute; right: 10px; top: 40px; background: white; border: 1px solid #ddd; padding: 5px; border-radius: 5px; z-index: 3000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        /* Модальное окно для групп */
+        #group-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; }
+        .modal-box { background:white; padding:20px; border-radius:12px; width:300px; }
     </style>
 </head>
-<body>
+<body onclick="document.querySelectorAll('.dropdown-menu').forEach(m=>m.style.display='none')">
 
 <div id="auth-screen">
     <div id="auth-box">
-        <h3>Вход</h3>
+        <h2>Messenger</h2>
         <input type="text" id="u-name" placeholder="Логин">
         <input type="password" id="u-pass" placeholder="Пароль">
         <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
@@ -47,7 +49,7 @@
 </div>
 
 <div id="group-modal">
-    <div class="modal-content">
+    <div class="modal-box">
         <h4>Создать группу</h4>
         <input type="text" id="g-name" placeholder="Название группы" style="width:100%; padding:8px; margin-bottom:10px;">
         <div id="selection-list" style="max-height:200px; overflow-y:auto; margin-bottom:10px;"></div>
@@ -58,21 +60,21 @@
 
 <div id="sidebar">
     <div class="sidebar-header">Чаты</div>
-    <div id="my-tag-display" style="padding:10px; font-size:12px; color:#0084ff; text-align:center;"></div>
+    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; color:#0084ff; font-weight:bold;">ID: ...</div>
     <div style="padding:10px; display:flex; gap:5px;">
-        <input type="text" id="search-input" placeholder="Tag#1234" style="flex:1;">
+        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px;">
         <button onclick="findUser()">Найти</button>
     </div>
-    <button onclick="openGroupModal()" style="margin:0 10px 10px; cursor:pointer;">+ Групповой чат</button>
-    <div id="user-list" style="overflow-y:auto; flex:1;"></div>
+    <button onclick="openGroupModal()" style="margin: 0 10px 10px; cursor:pointer; padding:5px;">+ Групповой чат</button>
+    <div id="user-list"></div>
 </div>
 
 <div id="main-chat">
-    <div id="chat-header" style="padding:15px; background:white; font-weight:bold; border-bottom:1px solid #ddd;">Выберите чат</div>
+    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold;">Выберите чат</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="text" id="m-input" placeholder="Сообщение...">
-        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer;">📎</button>
+        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
+        <button onclick="send()" class="send-btn">➤</button>
     </div>
 </div>
 
@@ -80,8 +82,14 @@
 <script>
     const socket = io();
     let myTag = '', currentRoom = '';
-    let foundUsers = [];
     let hiddenUsers = JSON.parse(localStorage.getItem('hidden-chats') || '[]');
+    let foundUsers = JSON.parse(sessionStorage.getItem('found-users') || '[]');
+
+    const inputField = document.getElementById('m-input');
+    inputField.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if(e.key === 'Enter') send();
+    });
 
     async function auth(type) {
         const u = document.getElementById('u-name').value;
@@ -90,7 +98,7 @@
         const data = await res.json();
         if(data.status==='ok') {
             myTag = data.tag;
-            document.getElementById('my-tag-display').innerText = "Мой ID: " + myTag;
+            document.getElementById('my-tag').innerText = "ID: " + myTag;
             document.getElementById('auth-screen').remove();
             socket.emit('store-user', myTag);
             loadSidebar();
@@ -99,12 +107,12 @@
 
     async function loadSidebar() {
         if(!myTag) return;
-        const res = await fetch('/my-chats/' + myTag);
+        const res = await fetch('/my-chats/'+myTag);
         const data = await res.json();
         const list = document.getElementById('user-list');
         list.innerHTML = '';
 
-        // Группы
+        // Отрисовка Групп
         if(data.groups) {
             data.groups.forEach(g => {
                 const div = document.createElement('div');
@@ -114,13 +122,17 @@
             });
         }
 
-        // Личные
+        // Отрисовка Личных чатов
         const allPartners = Array.from(new Set([...data.partners, ...foundUsers]));
-        allPartners.forEach(p => {
-            if (hiddenUsers.includes(p)) return;
+        allPartners.forEach(partner => {
+            if (hiddenUsers.includes(partner)) return;
             const div = document.createElement('div');
             div.className = 'item';
-            div.innerHTML = `<span onclick="openPriv('${p}')" style="flex:1">👤 ${p}</span>`;
+            div.innerHTML = `<span onclick="openPriv('${partner}')" style="flex:1">👤 ${partner}</span>
+                             <span onclick="toggleMenu(event, '${partner}')">⋮</span>
+                             <div id="menu-${partner}" class="dropdown-menu">
+                                <div onclick="hideChat('${partner}')" style="color:red; cursor:pointer; padding:5px;">Удалить</div>
+                             </div>`;
             list.appendChild(div);
         });
     }
@@ -133,7 +145,6 @@
         sel.innerHTML = '';
         partners.forEach(p => {
             const div = document.createElement('div');
-            div.className = 'user-row';
             div.innerHTML = `<input type="checkbox" class="g-chk" value="${p}"> <span>${p}</span>`;
             sel.appendChild(div);
         });
@@ -144,18 +155,13 @@
         const name = document.getElementById('g-name').value;
         const members = Array.from(document.querySelectorAll('.g-chk:checked')).map(c => c.value);
         if(!name || members.length === 0) return alert("Заполните данные");
-
-        const res = await fetch('/create-group', {
+        await fetch('/create-group', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ name, members, admin: myTag })
         });
-        const data = await res.json();
-        if(data.status === 'ok') {
-            document.getElementById('group-modal').style.display = 'none';
-            document.getElementById('g-name').value = '';
-            loadSidebar();
-        }
+        document.getElementById('group-modal').style.display = 'none';
+        loadSidebar();
     }
 
     function openPriv(t) {
@@ -171,55 +177,50 @@
     }
 
     function send() {
-        const val = document.getElementById('m-input').value;
-        if(val && currentRoom) {
-            socket.emit('chat message', { room: currentRoom, msg: val, sender: myTag });
-            document.getElementById('m-input').value = '';
+        if(inputField.value.trim() && currentRoom) {
+            socket.emit('chat message', { room: currentRoom, msg: inputField.value, sender: myTag });
+            inputField.value = '';
+            inputField.focus();
         }
     }
 
     function render(d) {
-        const id = d._id || d.id;
-        if(document.getElementById('msg-'+id)) return;
+        if(document.getElementById('msg-'+ (d._id || d.id))) return;
         const div = document.createElement('div');
-        div.id = 'msg-'+id;
+        div.id = 'msg-' + (d._id || d.id);
         const sender = d.sender || d.username;
         div.className = 'msg ' + (sender === myTag ? 'me' : '');
-        const delBtn = sender === myTag ? `<span class="delete-btn" onclick="deleteMsg('${id}')">Удалить</span>` : '';
-        div.innerHTML = `<b>${sender}</b> ${delBtn}<br>${d.msg || d.text}`;
+        div.innerHTML = `<b>${sender}</b><br>${d.msg || d.text}`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = 99999;
     }
 
-    function deleteMsg(id) {
-        if(confirm("Удалить?")) socket.emit('delete-msg', id);
+    function hideChat(tag) {
+        hiddenUsers.push(tag);
+        localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
+        loadSidebar();
     }
 
-    socket.on('msg-deleted', id => {
-        const el = document.getElementById('msg-'+id);
-        if(el) el.remove();
-    });
+    function toggleMenu(e, tag) {
+        e.stopPropagation();
+        document.querySelectorAll('.dropdown-menu').forEach(m=>m.style.display='none');
+        document.getElementById('menu-'+tag).style.display = 'block';
+    }
 
-    socket.on('chat message', d => {
+    socket.on('chat message', (d) => {
         if(d.room === currentRoom) render(d);
         loadSidebar();
     });
-
-    socket.on('chat history', h => h.forEach(render));
     
-    socket.on('new-chat-notification', d => {
-        if(!foundUsers.includes(d.from)) foundUsers.push(d.from);
-        loadSidebar();
-    });
+    socket.on('chat history', h => h.forEach(render));
 
     async function findUser() {
-        const tag = document.getElementById('search-input').value;
+        const tag = document.getElementById('search-input').value.trim();
         const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
         const user = await res.json();
         if(user.tag) {
             if(!foundUsers.includes(user.tag)) foundUsers.push(user.tag);
             openPriv(user.tag);
-            loadSidebar();
         }
     }
 </script>
