@@ -11,6 +11,7 @@ mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/cha
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
 
+// Модели
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
@@ -24,11 +25,16 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
+const Group = mongoose.model('Group', new mongoose.Schema({
+    name: String,
+    owner: String,
+    members: [String]
+}));
+
 app.use(express.static(__dirname));
 app.use(express.json());
 
-const userSockets = {};
-
+// API Маршруты
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -54,8 +60,9 @@ app.get('/my-sidebar/:tag', async (req, res) => {
                 if (partner) partners.add(partner);
             }
         });
-        res.send(Array.from(partners));
-    } catch (e) { res.send([]); }
+        const groups = await Group.find({ members: req.params.tag });
+        res.send({ privates: Array.from(partners), groups });
+    } catch (e) { res.send({ privates: [], groups: [] }); }
 });
 
 app.post('/search-user', async (req, res) => {
@@ -63,11 +70,9 @@ app.post('/search-user', async (req, res) => {
     res.send(user || { status: 'not_found' });
 });
 
+// Socket.io
 io.on('connection', (socket) => {
-    socket.on('store-user', (tag) => { 
-        userSockets[tag] = socket.id;
-        socket.join('notify-' + tag);
-    });
+    socket.on('store-user', (tag) => { socket.join('notify-' + tag); });
 
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id && !r.startsWith('notify-')) socket.leave(r); });
@@ -81,10 +86,34 @@ io.on('connection', (socket) => {
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
+        // Уведомление для личных сообщений
         const partner = data.room.split('_').find(p => p !== data.sender);
         if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+    });
+
+    // УДАЛЕНИЕ СООБЩЕНИЯ
+    socket.on('delete-msg', async (msgId) => {
+        await Message.findByIdAndDelete(msgId);
+        io.emit('msg-deleted', msgId);
+    });
+
+    // СОЗДАНИЕ ГРУППЫ
+    socket.on('create-group', async (data) => {
+        const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
+        const saved = await group.save();
+        io.to('notify-' + data.owner).emit('new-chat-notification', { from: 'system' });
+    });
+
+    // ДОБАВЛЕНИЕ В ГРУППУ
+    socket.on('add-to-group', async (data) => {
+        const group = await Group.findById(data.groupId);
+        if (group && !group.members.includes(data.tag)) {
+            group.members.push(data.tag);
+            await group.save();
+            io.to('notify-' + data.tag).emit('new-chat-notification', { from: 'system' });
+        }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server running on port ' + PORT));
+server.listen(PORT, () => console.log('Server started on port ' + PORT));
