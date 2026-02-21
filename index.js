@@ -24,10 +24,15 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
+// МОДЕЛЬ ГРУПП
+const Group = mongoose.model('Group', new mongoose.Schema({
+    name: String,
+    owner: String,
+    members: [String]
+}));
+
 app.use(express.static(__dirname));
 app.use(express.json());
-
-const userSockets = {};
 
 app.post('/register', async (req, res) => {
     try {
@@ -54,8 +59,10 @@ app.get('/my-sidebar/:tag', async (req, res) => {
                 if (partner) partners.add(partner);
             }
         });
-        res.send(Array.from(partners));
-    } catch (e) { res.send([]); }
+        // Загружаем группы, в которых состоит пользователь
+        const groups = await Group.find({ members: req.params.tag });
+        res.send({ privates: Array.from(partners), groups });
+    } catch (e) { res.send({ privates: [], groups: [] }); }
 });
 
 app.post('/search-user', async (req, res) => {
@@ -65,7 +72,6 @@ app.post('/search-user', async (req, res) => {
 
 io.on('connection', (socket) => {
     socket.on('store-user', (tag) => { 
-        userSockets[tag] = socket.id;
         socket.join('notify-' + tag);
     });
 
@@ -81,8 +87,34 @@ io.on('connection', (socket) => {
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        const partner = data.room.split('_').find(p => p !== data.sender);
-        if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+        const parts = data.room.split('_');
+        if(parts.length === 2) {
+            const partner = parts.find(p => p !== data.sender);
+            io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+        }
+    });
+
+    // УДАЛЕНИЕ СООБЩЕНИЯ
+    socket.on('delete-msg', async (id) => {
+        await Message.findByIdAndDelete(id);
+        io.emit('msg-deleted', id);
+    });
+
+    // СОЗДАНИЕ ГРУППЫ
+    socket.on('create-group', async (data) => {
+        const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
+        await group.save();
+        io.to('notify-' + data.owner).emit('new-chat-notification', { from: 'system' });
+    });
+
+    // ДОБАВЛЕНИЕ В ГРУППУ
+    socket.on('add-to-group', async (data) => {
+        const group = await Group.findById(data.groupId);
+        if(group && !group.members.includes(data.tag)) {
+            group.members.push(data.tag);
+            await group.save();
+            io.to('notify-' + data.tag).emit('new-chat-notification', { from: 'system' });
+        }
     });
 });
 
