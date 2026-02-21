@@ -11,14 +11,12 @@ mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/cha
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
 
-// Схема пользователя
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
     password: { type: String, required: true }
 }));
 
-// Схема сообщения
 const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
@@ -26,7 +24,7 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-// Схема группы
+// Схема Групп
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     members: [String],
@@ -53,25 +51,33 @@ app.post('/login', async (req, res) => {
 
 // Создание группы
 app.post('/create-group', async (req, res) => {
-    const { name, members, admin } = req.body;
-    const group = new Group({ name, members: [...members, admin], admin });
-    await group.save();
-    res.send({ status: 'ok' });
+    try {
+        const { name, members, admin } = req.body;
+        // ВАЖНО: объединяем выбранных людей и админа
+        const allMembers = Array.from(new Set([...members, admin]));
+        const group = new Group({ name, members: allMembers, admin });
+        await group.save();
+        res.send({ status: 'ok' });
+    } catch (e) {
+        res.send({ status: 'error' });
+    }
 });
 
-// Получение списка чатов и групп
+// Получение чатов и групп (Исправленный маршрут)
 app.get('/my-chats/:tag', async (req, res) => {
-    const messages = await Message.find({ room: { $regex: req.params.tag } });
-    const groups = await Group.find({ members: req.params.tag });
+    const myTag = req.params.tag;
+    const messages = await Message.find({ room: { $regex: myTag } });
+    const groups = await Group.find({ members: myTag });
     
     const partners = new Set();
     messages.forEach(m => {
         const parts = m.room.split('_');
         if (parts.length === 2) {
-            const partner = parts.find(p => p !== req.params.tag);
+            const partner = parts.find(p => p !== myTag);
             if (partner) partners.add(partner);
         }
     });
+    // Отправляем объект с группами и личными чатами
     res.send({ partners: Array.from(partners), groups });
 });
 
@@ -98,12 +104,9 @@ io.on('connection', (socket) => {
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        // Уведомление партнера (чтобы чат появился у него в списке)
         if (data.room.includes('_')) {
             const partner = data.room.split('_').find(p => p !== data.sender);
-            if (partner) {
-                io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
-            }
+            if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
         }
     });
 
@@ -113,4 +116,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server OK: http://localhost:3000'));
+server.listen(3000, () => console.log('Server running on port 3000'));
