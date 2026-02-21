@@ -24,7 +24,6 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-// Новая схема для Групп
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     members: [String],
@@ -49,16 +48,15 @@ app.post('/login', async (req, res) => {
     res.send({ status: 'ok', tag: user.tag });
 });
 
-// Маршрут создания группы
 app.post('/create-group', async (req, res) => {
-    const { name, members, admin } = req.body;
-    const allMembers = Array.from(new Set([...members, admin]));
-    const group = new Group({ name, members: allMembers, admin });
-    await group.save();
-    res.send({ status: 'ok' });
+    try {
+        const { name, members, admin } = req.body;
+        const group = new Group({ name, members: [...members, admin], admin });
+        await group.save();
+        res.send({ status: 'ok' });
+    } catch (e) { res.send({ status: 'error' }); }
 });
 
-// Исправленный маршрут получения чатов
 app.get('/my-chats/:tag', async (req, res) => {
     const myTag = req.params.tag;
     const messages = await Message.find({ room: { $regex: myTag } });
@@ -72,6 +70,7 @@ app.get('/my-chats/:tag', async (req, res) => {
             if (partner) partners.add(partner);
         }
     });
+    // Отправляем объект с данными
     res.send({ partners: Array.from(partners), groups });
 });
 
@@ -98,9 +97,10 @@ io.on('connection', (socket) => {
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
+        // Уведомление партнера (чтобы сообщение появилось сразу)
         if (data.room.includes('_')) {
             const partner = data.room.split('_').find(p => p !== data.sender);
-            if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+            io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
         }
     });
 
