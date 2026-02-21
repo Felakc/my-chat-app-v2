@@ -2,48 +2,48 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Final</title>
+    <title>Messenger Pro</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
-        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 999999; }
+        #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
         #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #auth-box input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; }
-        .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
-        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
+        #auth-box input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; background: #0084ff; color: white; display: flex; justify-content: space-between; align-items: center; }
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; z-index: 2000; }
-        #m-input { 
-            flex: 1; padding: 12px 15px; border: 2px solid #0084ff; border-radius: 25px; outline: none; 
-            font-size: 16px; background: white !important; color: black !important;
-        }
-        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg { margin-bottom: 10px; padding: 10px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; }
         .msg.me { align-self: flex-end; background: #dcf8c6; }
-        .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; position: relative; }
-        .dropdown-menu { display: none; position: absolute; right: 10px; top: 40px; background: white; border: 1px solid #ddd; padding: 5px; border-radius: 5px; z-index: 3000; }
+        .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
+        .del-btn { color: red; cursor: pointer; float: right; font-size: 10px; margin-left: 10px; }
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; align-items: center; }
+        #m-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; }
+        .item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
     </style>
 </head>
-<body onclick="document.querySelectorAll('.dropdown-menu').forEach(m=>m.style.display='none')">
+<body onclick="document.querySelectorAll('.dropdown').forEach(d=>d.style.display='none')">
 
 <div id="auth-screen">
     <div id="auth-box">
-        <h2>Messenger</h2>
+        <h2>Вход</h2>
         <input type="text" id="u-name" placeholder="Логин">
         <input type="password" id="u-pass" placeholder="Пароль">
         <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
-        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Регистрация</button>
+        <button onclick="auth('register')" style="margin-top:10px; border:none; background:none; color:green; cursor:pointer;">Регистрация</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div class="sidebar-header">Чаты</div>
-    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; color:#0084ff; font-weight:bold;">ID: ...</div>
+    <div class="sidebar-header">
+        <span>Чаты</span>
+        <button onclick="createGroup()" style="font-size:10px;">+ Группа</button>
+    </div>
+    <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff;">ID: ...</div>
     <div style="padding:10px; display:flex; gap:5px;">
         <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px;">
         <button onclick="findUser()">Найти</button>
     </div>
-    <div style="font-size:11px; padding:5px 15px; color:#888;">ДИАЛОГИ</div>
     <div id="user-list"></div>
 </div>
 
@@ -51,7 +51,8 @@
     <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold;">Выберите чат</div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
+        <label style="cursor:pointer; font-size:20px;">📎<input type="file" id="f-input" style="display:none;" onchange="loadFile(this)"></label>
+        <input type="text" id="m-input" placeholder="Сообщение..." autocomplete="off">
         <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer;">></button>
     </div>
 </div>
@@ -59,17 +60,8 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    let myTag = '', currentRoom = '';
+    let myTag = '', currentRoom = '', selectedFile = null;
     let hiddenUsers = JSON.parse(localStorage.getItem('hidden-chats') || '[]');
-    let foundUsers = JSON.parse(sessionStorage.getItem('found-users') || '[]');
-
-    const inputField = document.getElementById('m-input');
-
-    // ФИКС ПЕЧАТИ: Останавливаем всплытие событий, которые могут блокировать ввод
-    inputField.addEventListener('keydown', (e) => {
-        e.stopPropagation();
-        if(e.key === 'Enter') send();
-    });
 
     async function auth(type) {
         const u = document.getElementById('u-name').value;
@@ -78,7 +70,7 @@
         const data = await res.json();
         if(data.status==='ok') {
             myTag = data.tag;
-            document.getElementById('my-tag').innerText = "ID: " + myTag;
+            document.getElementById('my-tag').innerText = "Ваш ID: " + myTag;
             document.getElementById('auth-screen').remove();
             socket.emit('store-user', myTag);
             loadSidebar();
@@ -86,101 +78,91 @@
     }
 
     async function loadSidebar() {
-        const res = await fetch('/my-chats/'+myTag);
-        const dbChats = await res.json();
-        const allPartners = Array.from(new Set([...dbChats, ...foundUsers]));
+        const res = await fetch('/my-sidebar/' + myTag);
+        const data = await res.json();
         const list = document.getElementById('user-list');
         list.innerHTML = '';
+        
+        data.privates.forEach(p => {
+            if(hiddenUsers.includes(p)) return;
+            list.innerHTML += `<div class="item">
+                <span onclick="openChat('${p}', true)">👤 ${p}</span>
+                <span onclick="hideUser('${p}')" style="color:#ccc">✕</span>
+            </div>`;
+        });
 
-        allPartners.forEach(partner => {
-            if (hiddenUsers.includes(partner) && currentRoom !== [myTag, partner].sort().join('_')) return;
-            const div = document.createElement('div');
-            div.className = 'item';
-            div.innerHTML = `<span onclick="openPriv('${partner}')" style="flex:1">👤 ${partner}</span>
-                             <span onclick="toggleMenu(event, '${partner}')">⋮</span>
-                             <div id="menu-${partner}" class="dropdown-menu">
-                                <div onclick="hideChat('${partner}')" style="color:red; cursor:pointer; padding:5px;">Скрыть</div>
-                             </div>`;
-            list.appendChild(div);
+        data.groups.forEach(g => {
+            list.innerHTML += `<div class="item">
+                <span onclick="openChat('${g._id}', false, '${g.name}')">👥 ${g.name}</span>
+                ${g.owner === myTag ? `<span onclick="socket.emit('delete-group', '${g._id}')" style="color:red">🗑️</span>` : ''}
+            </div>`;
         });
     }
 
-    async function findUser() {
-        const tag = document.getElementById('search-input').value.trim();
-        if(!tag || tag === myTag) return;
-        const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
-        const user = await res.json();
-        if(user.tag) {
-            if(!foundUsers.includes(user.tag)) {
-                foundUsers.push(user.tag);
-                sessionStorage.setItem('found-users', JSON.stringify(foundUsers));
-            }
-            openPriv(user.tag);
-        } else { alert("Не найден"); }
-    }
-
-    function openPriv(t) {
-        hiddenUsers = hiddenUsers.filter(u => u !== t);
-        localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
-        currentRoom = [myTag, t].sort().join('_');
-        document.getElementById('chat-header').innerText = t;
+    function openChat(id, isPriv, name = '') {
+        currentRoom = isPriv ? [myTag, id].sort().join('_') : id;
+        document.getElementById('chat-header').innerText = isPriv ? id : name;
         document.getElementById('messages').innerHTML = '';
         socket.emit('join room', currentRoom);
-        loadSidebar();
-        
-        // Принудительная разблокировка инпута
-        inputField.disabled = false;
-        inputField.readOnly = false;
-        setTimeout(() => inputField.focus(), 50);
+        // Фикс печати
+        setTimeout(() => document.getElementById('m-input').focus(), 100);
+    }
+
+    function loadFile(input) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = e => {
+            selectedFile = { data: e.target.result, name: file.name, type: file.type };
+            alert("Файл готов к отправке");
+        };
+        reader.readAsDataURL(file);
     }
 
     function send() {
-        if(inputField.value.trim() && currentRoom) {
-            socket.emit('chat message', { room: currentRoom, msg: inputField.value, sender: myTag });
-            inputField.value = '';
-            inputField.focus();
+        const input = document.getElementById('m-input');
+        if((input.value || selectedFile) && currentRoom) {
+            socket.emit('chat message', {
+                room: currentRoom, sender: myTag, msg: input.value,
+                file: selectedFile ? selectedFile.data : null,
+                fileName: selectedFile ? selectedFile.name : null,
+                fileType: selectedFile ? selectedFile.type : null
+            });
+            input.value = ''; selectedFile = null;
         }
     }
 
     function render(d) {
-        if(document.getElementById('msg-'+ (d._id || d.id))) return;
         const div = document.createElement('div');
-        div.id = 'msg-' + (d._id || d.id);
+        div.id = 'msg-' + d._id;
         const sender = d.sender || d.username;
         div.className = 'msg ' + (sender === myTag ? 'me' : '');
-        div.innerHTML = `<b>${sender}</b><br>${d.msg || d.text}`;
+        let content = `<b>${sender}</b> <span class="del-btn" onclick="socket.emit('delete-msg', '${d._id}')">🗑️</span><br>`;
+        if(d.msg || d.text) content += `<span>${d.msg || d.text}</span>`;
+        if(d.file) {
+            if(d.fileType.startsWith('image/')) content += `<br><img src="${d.file}">`;
+            else content += `<br><a href="${d.file}" download="${d.fileName}">📄 ${d.fileName}</a>`;
+        }
+        div.innerHTML = content;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = 99999;
     }
 
-    function hideChat(tag) {
+    function hideUser(tag) {
         hiddenUsers.push(tag);
         localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
         loadSidebar();
     }
 
-    function toggleMenu(e, tag) {
-        e.stopPropagation();
-        document.querySelectorAll('.dropdown-menu').forEach(m=>m.style.display='none');
-        document.getElementById('menu-'+tag).style.display = 'block';
+    function createGroup() {
+        const name = prompt("Название группы:");
+        if(name) socket.emit('create-group', { name, owner: myTag });
     }
 
-    socket.on('new-chat-notification', (data) => {
-        if(!foundUsers.includes(data.from)) {
-            foundUsers.push(data.from);
-            sessionStorage.setItem('found-users', JSON.stringify(foundUsers));
-        }
-        hiddenUsers = hiddenUsers.filter(u => u !== data.from);
-        localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
-        loadSidebar();
-    });
-
-    socket.on('chat message', (d) => {
-        if(d.room === currentRoom) render(d);
-        loadSidebar();
-    });
-
+    socket.on('chat message', render);
     socket.on('chat history', h => h.forEach(render));
+    socket.on('msg-deleted', id => document.getElementById('msg-'+id)?.remove());
+    socket.on('new-chat-notification', loadSidebar);
+    socket.on('group-deleted', () => location.reload());
 </script>
 </body>
 </html>

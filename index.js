@@ -5,12 +5,13 @@ const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 1e7 });
+const io = new Server(server, { maxHttpBufferSize: 1e8 }); // Лимит 100мб для фото
 
 mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db')
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
 
+// МОДЕЛИ
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
@@ -21,14 +22,22 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
     text: String,
+    file: String, // Для фото/файлов
+    fileName: String,
+    fileType: String,
     timestamp: { type: Date, default: Date.now }
+}));
+
+const Group = mongoose.model('Group', new mongoose.Schema({
+    name: String,
+    owner: String,
+    members: [String]
 }));
 
 app.use(express.static(__dirname));
 app.use(express.json());
 
-const userSockets = {};
-
+// API
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
@@ -38,11 +47,10 @@ app.post('/register', async (req, res) => {
 
 app.post('/login', async (req, res) => {
     const user = await User.findOne({ username: req.body.username, password: req.body.password });
-    if (!user) return res.send({ status: 'error' });
-    res.send({ status: 'ok', tag: user.tag });
+    res.send(user ? { status: 'ok', tag: user.tag } : { status: 'error' });
 });
 
-app.get('/my-chats/:tag', async (req, res) => {
+app.get('/my-sidebar/:tag', async (req, res) => {
     const messages = await Message.find({ room: { $regex: req.params.tag } });
     const partners = new Set();
     messages.forEach(m => {
@@ -52,7 +60,8 @@ app.get('/my-chats/:tag', async (req, res) => {
             if (partner) partners.add(partner);
         }
     });
-    res.send(Array.from(partners));
+    const groups = await Group.find({ members: req.params.tag });
+    res.send({ privates: Array.from(partners), groups });
 });
 
 app.post('/search-user', async (req, res) => {
@@ -60,11 +69,9 @@ app.post('/search-user', async (req, res) => {
     res.send(user || { status: 'not_found' });
 });
 
+// SOCKETS
 io.on('connection', (socket) => {
-    socket.on('store-user', (tag) => { 
-        userSockets[tag] = socket.id;
-        socket.join('notify-' + tag);
-    });
+    socket.on('store-user', (tag) => { socket.join('notify-' + tag); });
 
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id && !r.startsWith('notify-')) socket.leave(r); });
@@ -74,12 +81,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chat message', async (data) => {
-        const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
+        const msg = new Message({ 
+            room: data.room, 
+            username: data.sender, 
+            text: data.msg,
+            file: data.file,
+            fileName: data.fileName,
+            fileType: data.fileType
+        });
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        const partner = data.room.split('_').find(p => p !== data.sender);
-        if (partner) {
+        // Уведомление
+        const parts = data.room.split('_');
+        if(parts.length === 2) {
+            const partner = parts.find(p => p !== data.sender);
             io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
         }
     });
@@ -88,6 +104,19 @@ io.on('connection', (socket) => {
         await Message.findByIdAndDelete(id);
         io.emit('msg-deleted', id);
     });
+
+    socket.on('create-group', async (data) => {
+        const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
+        await group.save();
+        io.to('notify-' + data.owner).emit('new-chat-notification', { from: 'system' });
+    });
+
+    socket.on('delete-group', async (groupId) => {
+        await Message.deleteMany({ room: groupId });
+        await Group.findByIdAndDelete(groupId);
+        io.emit('group-deleted', groupId);
+    });
 });
 
-server.listen(3000, () => console.log('Server OK'));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log('Server OK on port ' + PORT));
