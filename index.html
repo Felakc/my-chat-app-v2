@@ -2,25 +2,41 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Мой чат</title>
+    <title>Messenger Pro</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
+        
+        /* Авторизация */
         #auth-screen { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 999999; }
         #auth-box { background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         #auth-box input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        
+        /* Сайдбар */
         #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; }
         .sidebar-header { padding: 15px; background: #0084ff; color: white; font-weight: bold; }
-        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
-        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; z-index: 2000; }
-        #m-input { flex: 1; padding: 12px 15px; border: 2px solid #0084ff; border-radius: 25px; outline: none; font-size: 16px; }
-        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .msg.me { align-self: flex-end; background: #dcf8c6; }
         .item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .group-tag { background: #e3f2fd; color: #0084ff; font-size: 10px; padding: 2px 5px; border-radius: 4px; }
-        .delete-btn { color: red; cursor: pointer; font-size: 10px; margin-left: 10px; display: none; }
+
+        /* Чат */
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
+        .msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: white; align-self: flex-start; max-width: 70%; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg.me { align-self: flex-end; background: #dcf8c6; }
+        
+        /* Удаление */
+        .delete-btn { color: red; cursor: pointer; font-size: 12px; margin-left: 10px; display: none; font-weight: bold; }
         .msg.me:hover .delete-btn { display: inline; }
+
+        #input-area { padding: 15px; display: flex; background: white; gap: 10px; border-top: 1px solid #ddd; }
+        #m-input { flex: 1; padding: 12px 15px; border: 2px solid #0084ff; border-radius: 25px; outline: none; }
+
+        /* Модальное окно групп */
+        #group-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 320px; max-height: 80vh; display: flex; flex-direction: column; }
+        .user-selection-list { overflow-y: auto; margin: 15px 0; flex: 1; border: 1px solid #eee; border-radius: 8px; }
+        .user-select-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid #f9f9f9; }
+        
         .dropdown-menu { display: none; position: absolute; right: 10px; top: 40px; background: white; border: 1px solid #ddd; padding: 5px; border-radius: 5px; z-index: 3000; }
     </style>
 </head>
@@ -36,16 +52,28 @@
     </div>
 </div>
 
+<div id="group-modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0">Новая группа</h3>
+        <input type="text" id="group-name-input" placeholder="Название группы" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+        <p style="font-size: 12px; color: #666; margin: 15px 0 5px;">Выберите участников из чатов:</p>
+        <div id="user-selection-list" class="user-selection-list"></div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="submitGroup()" style="flex:1; padding:10px; background: #0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Создать</button>
+            <button onclick="document.getElementById('group-modal').style.display='none'" style="flex:1; background:#eee; border:none; border-radius:8px; cursor:pointer;">Отмена</button>
+        </div>
+    </div>
+</div>
+
 <div id="sidebar">
     <div class="sidebar-header">Чаты</div>
     <div id="my-tag" style="padding:10px; font-size:12px; text-align:center; background:#eef6ff; color:#0084ff; font-weight:bold;">ID: ...</div>
     <div style="padding:10px; display:flex; gap:5px;">
-        <input type="text" id="search-input" placeholder="Имя#1234" style="flex:1; padding:5px;">
-        <button onclick="findUser()">Найти</button>
+        <input type="text" id="search-input" placeholder="Поиск по ID (User#1234)" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:5px;">
+        <button onclick="findUser()" style="cursor:pointer">Найти</button>
     </div>
-    <button onclick="createGroup()" style="margin: 0 10px 10px; cursor:pointer; padding:5px; background:#f0f0f0; border:1px solid #ccc; border-radius:5px;">+ Создать группу</button>
-    <div style="font-size:11px; padding:5px 15px; color:#888;">ДИАЛОГИ И ГРУППЫ</div>
-    <div id="user-list"></div>
+    <button onclick="openGroupModal()" style="margin: 0 10px 10px; cursor:pointer; padding:8px; border-radius:5px; border:1px solid #0084ff; background:white; color:#0084ff;">+ Создать группу</button>
+    <div id="user-list" style="overflow-y:auto; flex:1"></div>
 </div>
 
 <div id="main-chat">
@@ -53,7 +81,7 @@
     <div id="messages"></div>
     <div id="input-area">
         <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
-        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer;">></button>
+        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer; font-weight:bold;">></button>
     </div>
 </div>
 
@@ -63,11 +91,9 @@
     let myTag = '', currentRoom = '';
     let hiddenUsers = JSON.parse(localStorage.getItem('hidden-chats') || '[]');
     let foundUsers = JSON.parse(sessionStorage.getItem('found-users') || '[]');
-    const inputField = document.getElementById('m-input');
 
-    inputField.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') send();
-    });
+    const inputField = document.getElementById('m-input');
+    inputField.addEventListener('keydown', (e) => { if(e.key === 'Enter') send(); });
 
     async function auth(type) {
         const u = document.getElementById('u-name').value;
@@ -89,41 +115,72 @@
         const list = document.getElementById('user-list');
         list.innerHTML = '';
 
-        // Группы 
+        // Отображение Групп
         data.groups.forEach(g => {
             const div = document.createElement('div');
             div.className = 'item';
-            div.innerHTML = `<span onclick="openRoom('${g._id}', '${g.name}')" style="flex:1">👥 ${g.name} <small class="group-tag">Группа</small></span>`;
+            div.innerHTML = `<span onclick="openRoom('${g._id}', '${g.name}')" style="flex:1">👥 ${g.name} <small class="group-tag">ГРУППА</small></span>`;
             list.appendChild(div);
         });
 
-        // Личные чаты 
+        // Отображение личных диалогов
         const allPartners = Array.from(new Set([...data.partners, ...foundUsers]));
         allPartners.forEach(partner => {
             if (hiddenUsers.includes(partner)) return;
             const div = document.createElement('div');
             div.className = 'item';
             div.innerHTML = `<span onclick="openPriv('${partner}')" style="flex:1">👤 ${partner}</span>
-                             <span onclick="toggleMenu(event, '${partner}')">⋮</span>
+                             <span onclick="toggleMenu(event, '${partner}')" style="padding:0 5px">⋮</span>
                              <div id="menu-${partner}" class="dropdown-menu">
-                                <div onclick="hideChat('${partner}')" style="color:red; cursor:pointer; padding:5px;">Скрыть</div>
+                                <div onclick="hideChat('${partner}')" style="color:red; cursor:pointer; padding:5px;">Скрыть чат</div>
                              </div>`;
             list.appendChild(div);
         });
     }
 
-    async function createGroup() {
-        const name = prompt("Название группы:");
-        const invite = prompt("ID участника (Напр: User#1234). Можно несколько через запятую:");
-        if(name) {
-            const members = invite ? invite.split(',').map(s => s.trim()) : [];
-            await fetch('/create-group', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name, members, admin: myTag })
-            });
-            loadSidebar();
+    // ЛОГИКА ГРУПП (ВЫБОР ИЗ ДИАЛОГОВ)
+    async function openGroupModal() {
+        const res = await fetch('/my-chats/' + myTag);
+        const data = await res.json();
+        const allPartners = Array.from(new Set([...data.partners, ...foundUsers]));
+        
+        const listDiv = document.getElementById('user-selection-list');
+        listDiv.innerHTML = '';
+
+        if (allPartners.length === 0) {
+            listDiv.innerHTML = '<p style="padding:10px; font-size:12px; color:gray">Сначала начните диалог с кем-нибудь</p>';
         }
+
+        allPartners.forEach(partner => {
+            const div = document.createElement('div');
+            div.className = 'user-select-item';
+            div.innerHTML = `
+                <input type="checkbox" class="group-member-checkbox" value="${partner}" id="chk-${partner}">
+                <label for="chk-${partner}" style="cursor:pointer; flex:1">${partner}</label>
+            `;
+            listDiv.appendChild(div);
+        });
+
+        document.getElementById('group-modal').style.display = 'flex';
+    }
+
+    async function submitGroup() {
+        const name = document.getElementById('group-name-input').value.trim();
+        const checked = document.querySelectorAll('.group-member-checkbox:checked');
+        const members = Array.from(checked).map(c => c.value);
+
+        if (!name) return alert("Введите название группы");
+        if (members.length === 0) return alert("Выберите участников");
+
+        await fetch('/create-group', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, members, admin: myTag })
+        });
+
+        document.getElementById('group-modal').style.display = 'none';
+        document.getElementById('group-name-input').value = '';
+        loadSidebar();
     }
 
     function openPriv(t) {
@@ -151,7 +208,7 @@
             }
             openPriv(user.tag);
             loadSidebar();
-        } else { alert("Не найден"); }
+        } else { alert("Пользователь не найден"); }
     }
 
     function send() {
@@ -169,6 +226,7 @@
         const sender = d.sender || d.username;
         div.className = 'msg ' + (sender === myTag ? 'me' : '');
         
+        // Кнопка удаления для своих сообщений
         const delBtn = sender === myTag ? `<span class="delete-btn" onclick="deleteMsg('${id}')">✕</span>` : '';
         
         div.innerHTML = `<b>${sender}</b> ${delBtn}<br>${d.msg || d.text}`;
@@ -177,7 +235,7 @@
     }
 
     function deleteMsg(id) {
-        if(confirm("Удалить сообщение?")) socket.emit('delete-msg', id);
+        if(confirm("Удалить это сообщение для всех?")) socket.emit('delete-msg', id);
     }
 
     socket.on('msg-deleted', id => {
@@ -185,25 +243,20 @@
         if(el) el.remove();
     });
 
-    // Важное исправление: когда кто-то пишет нам, добавляем его в список 
+    // Мгновенное появление нового чата, когда кто-то написал нам
     socket.on('new-chat-notification', (data) => {
         if(!foundUsers.includes(data.from)) {
             foundUsers.push(data.from);
             sessionStorage.setItem('found-users', JSON.stringify(foundUsers));
         }
-        // Убираем из скрытых, если он там был 
         hiddenUsers = hiddenUsers.filter(u => u !== data.from);
         localStorage.setItem('hidden-chats', JSON.stringify(hiddenUsers));
-        loadSidebar(); // Перерисовываем боковую панель
+        loadSidebar();
     });
 
     socket.on('chat message', (d) => {
-        if(d.room === currentRoom) {
-            render(d);
-        } else {
-            // Если сообщение пришло в другой чат, обновляем сайдбар, чтобы чат появился
-            loadSidebar();
-        }
+        if(d.room === currentRoom) render(d);
+        loadSidebar(); // Обновляем список, чтобы поднять чат наверх
     });
 
     socket.on('chat history', h => h.forEach(render));

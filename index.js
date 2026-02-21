@@ -11,12 +11,14 @@ mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/cha
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
 
+// Схема пользователя
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
     password: { type: String, required: true }
 }));
 
+// Схема сообщения
 const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
@@ -24,6 +26,7 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
+// Схема группы
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     members: [String],
@@ -48,6 +51,7 @@ app.post('/login', async (req, res) => {
     res.send({ status: 'ok', tag: user.tag });
 });
 
+// Создание группы
 app.post('/create-group', async (req, res) => {
     const { name, members, admin } = req.body;
     const group = new Group({ name, members: [...members, admin], admin });
@@ -55,8 +59,8 @@ app.post('/create-group', async (req, res) => {
     res.send({ status: 'ok' });
 });
 
+// Получение списка чатов и групп
 app.get('/my-chats/:tag', async (req, res) => {
-    // Ищем все сообщения, где упоминается тег пользователя в названии комнаты 
     const messages = await Message.find({ room: { $regex: req.params.tag } });
     const groups = await Group.find({ members: req.params.tag });
     
@@ -92,14 +96,12 @@ io.on('connection', (socket) => {
     socket.on('chat message', async (data) => {
         const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
         const saved = await msg.save();
-        
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        // Если это приватный чат, уведомляем получателя 
+        // Уведомление партнера (чтобы чат появился у него в списке)
         if (data.room.includes('_')) {
             const partner = data.room.split('_').find(p => p !== data.sender);
             if (partner) {
-                // Отправляем сигнал "обнови список чатов" конкретному пользователю 
                 io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
             }
         }
@@ -111,4 +113,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server OK'));
+server.listen(3000, () => console.log('Server OK: http://localhost:3000'));
