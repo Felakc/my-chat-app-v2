@@ -24,7 +24,6 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-// МОДЕЛЬ ДЛЯ ГРУПП
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     members: [String],
@@ -49,7 +48,6 @@ app.post('/login', async (req, res) => {
     res.send({ status: 'ok', tag: user.tag });
 });
 
-// СОЗДАНИЕ ГРУППЫ
 app.post('/create-group', async (req, res) => {
     try {
         const { name, members, admin } = req.body;
@@ -57,12 +55,9 @@ app.post('/create-group', async (req, res) => {
         const group = new Group({ name, members: allMembers, admin });
         await group.save();
         res.send({ status: 'ok' });
-    } catch (e) {
-        res.send({ status: 'error' });
-    }
+    } catch (e) { res.send({ status: 'error' }); }
 });
 
-// ПОЛУЧЕНИЕ ЧАТОВ (ИСПРАВЛЕНО: возвращает и личные, и группы)
 app.get('/my-chats/:tag', async (req, res) => {
     const myTag = req.params.tag;
     const messages = await Message.find({ room: { $regex: myTag } });
