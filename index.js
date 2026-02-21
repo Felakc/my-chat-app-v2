@@ -11,12 +11,14 @@ mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/cha
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
 
+// Схема пользователя [cite: 4]
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
     password: { type: String, required: true }
 }));
 
+// Схема сообщения (добавлено поле roomType) [cite: 5]
 const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
@@ -24,11 +26,11 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-// НОВАЯ МОДЕЛЬ ДЛЯ ГРУПП
+// Схема группы (Новое)
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
-    owner: String,
-    members: [String]
+    members: [String],
+    admin: String
 }));
 
 app.use(express.static(__dirname));
@@ -49,21 +51,28 @@ app.post('/login', async (req, res) => {
     res.send({ status: 'ok', tag: user.tag });
 });
 
+// Создание группы (Новое)
+app.post('/create-group', async (req, res) => {
+    const { name, members, admin } = req.body;
+    const group = new Group({ name, members: [...members, admin], admin });
+    await group.save();
+    res.send({ status: 'ok' });
+});
+
+// Получение чатов и групп [cite: 8]
 app.get('/my-chats/:tag', async (req, res) => {
-    try {
-        const messages = await Message.find({ room: { $regex: req.params.tag } });
-        const partners = new Set();
-        messages.forEach(m => {
-            const parts = m.room.split('_');
-            if (parts.length === 2) {
-                const partner = parts.find(p => p !== req.params.tag);
-                if (partner) partners.add(partner);
-            }
-        });
-        // Загружаем группы, где есть пользователь
-        const groups = await Group.find({ members: req.params.tag });
-        res.send({ partners: Array.from(partners), groups });
-    } catch (e) { res.send({ partners: [], groups: [] }); }
+    const messages = await Message.find({ room: { $regex: req.params.tag } });
+    const groups = await Group.find({ members: req.params.tag });
+    
+    const partners = new Set();
+    messages.forEach(m => {
+        const parts = m.room.split('_');
+        if (parts.length === 2) {
+            const partner = parts.find(p => p !== req.params.tag);
+            if (partner) partners.add(partner);
+        }
+    });
+    res.send({ partners: Array.from(partners), groups });
 });
 
 app.post('/search-user', async (req, res) => {
@@ -89,32 +98,19 @@ io.on('connection', (socket) => {
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        const partner = data.room.split('_').find(p => p !== data.sender);
-        if (partner) {
-            io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+        // Уведомление для личных сообщений [cite: 11]
+        if (data.room.includes('_')) {
+            const partner = data.room.split('_').find(p => p !== data.sender);
+            if (partner) {
+                io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+            }
         }
     });
 
-    // СОБЫТИЕ УДАЛЕНИЯ
+    // Удаление сообщения (Новое) [cite: 12, 13]
     socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
-        io.emit('msg-deleted', id);
-    });
-
-    // СОБЫТИЯ ГРУПП
-    socket.on('create-group', async (data) => {
-        const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
-        await group.save();
-        io.to('notify-' + data.owner).emit('new-chat-notification', { from: 'system' });
-    });
-
-    socket.on('add-to-group', async (data) => {
-        const group = await Group.findById(data.groupId);
-        if(group && !group.members.includes(data.tag)) {
-            group.members.push(data.tag);
-            await group.save();
-            io.to('notify-' + data.tag).emit('new-chat-notification', { from: 'system' });
-        }
+        io.emit('msg-deleted', id); 
     });
 });
 
