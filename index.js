@@ -9,29 +9,30 @@ const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
 mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db')
     .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log('DB Error:', err));
+    .catch(err => console.log('DB Error:', err)); [cite: 72]
 
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
     password: { type: String, required: true }
-}));
+})); [cite: 73]
 
 const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
     text: String,
     timestamp: { type: Date, default: Date.now }
-}));
+})); [cite: 74]
 
+// НОВАЯ МОДЕЛЬ ДЛЯ ГРУПП
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
-    members: [String],
-    admin: String
+    owner: String,
+    members: [String]
 }));
 
 app.use(express.static(__dirname));
-app.use(express.json());
+app.use(express.json()); [cite: 75]
 
 const userSockets = {};
 
@@ -46,33 +47,24 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({ username: req.body.username, password: req.body.password });
     if (!user) return res.send({ status: 'error' });
     res.send({ status: 'ok', tag: user.tag });
-});
-
-app.post('/create-group', async (req, res) => {
-    try {
-        const { name, members, admin } = req.body;
-        const allMembers = Array.from(new Set([...members, admin]));
-        const group = new Group({ name, members: allMembers, admin });
-        await group.save();
-        res.send({ status: 'ok' });
-    } catch (e) { res.send({ status: 'error' }); }
-});
+}); [cite: 76]
 
 app.get('/my-chats/:tag', async (req, res) => {
-    const myTag = req.params.tag;
-    const messages = await Message.find({ room: { $regex: myTag } });
-    const groups = await Group.find({ members: myTag });
-    
-    const partners = new Set();
-    messages.forEach(m => {
-        const parts = m.room.split('_');
-        if (parts.length === 2) {
-            const partner = parts.find(p => p !== myTag);
-            if (partner) partners.add(partner);
-        }
-    });
-    res.send({ partners: Array.from(partners), groups });
-});
+    try {
+        const messages = await Message.find({ room: { $regex: req.params.tag } });
+        const partners = new Set();
+        messages.forEach(m => {
+            const parts = m.room.split('_');
+            if (parts.length === 2) {
+                const partner = parts.find(p => p !== req.params.tag);
+                if (partner) partners.add(partner);
+            }
+        });
+        // Загружаем группы, где есть пользователь
+        const groups = await Group.find({ members: req.params.tag });
+        res.send({ partners: Array.from(partners), groups });
+    } catch (e) { res.send({ partners: [], groups: [] }); }
+}); [cite: 77, 78]
 
 app.post('/search-user', async (req, res) => {
     const user = await User.findOne({ tag: req.body.tag }, 'tag');
@@ -83,29 +75,46 @@ io.on('connection', (socket) => {
     socket.on('store-user', (tag) => { 
         userSockets[tag] = socket.id;
         socket.join('notify-' + tag);
-    });
+    }); [cite: 79]
 
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id && !r.startsWith('notify-')) socket.leave(r); });
         socket.join(room);
         const history = await Message.find({ room }).sort({ timestamp: 1 });
         socket.emit('chat history', history);
-    });
+    }); [cite: 80]
 
     socket.on('chat message', async (data) => {
         const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
-        if (data.room.includes('_')) {
-            const partner = data.room.split('_').find(p => p !== data.sender);
+        const partner = data.room.split('_').find(p => p !== data.sender);
+        if (partner) {
             io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
         }
-    });
+    }); [cite: 81]
 
+    // СОБЫТИЕ УДАЛЕНИЯ
     socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
         io.emit('msg-deleted', id);
+    }); [cite: 82]
+
+    // СОБЫТИЯ ГРУПП
+    socket.on('create-group', async (data) => {
+        const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
+        await group.save();
+        io.to('notify-' + data.owner).emit('new-chat-notification', { from: 'system' });
+    });
+
+    socket.on('add-to-group', async (data) => {
+        const group = await Group.findById(data.groupId);
+        if(group && !group.members.includes(data.tag)) {
+            group.members.push(data.tag);
+            await group.save();
+            io.to('notify-' + data.tag).emit('new-chat-notification', { from: 'system' });
+        }
     });
 });
 
