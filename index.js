@@ -7,24 +7,25 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
+// ПОДКЛЮЧЕНИЕ К БД (Ошибка с ':' исправлена здесь)
 mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db')
     .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log('DB Error:', err)); [cite: 72]
+    .catch(err => console.log('DB Error:', err));
 
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
     password: { type: String, required: true }
-})); [cite: 73]
+}));
 
 const Message = mongoose.model('Message', new mongoose.Schema({
     room: String, 
     username: String,
     text: String,
     timestamp: { type: Date, default: Date.now }
-})); [cite: 74]
+}));
 
-// НОВАЯ МОДЕЛЬ ДЛЯ ГРУПП
+// МОДЕЛЬ ГРУПП
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     owner: String,
@@ -32,23 +33,26 @@ const Group = mongoose.model('Group', new mongoose.Schema({
 }));
 
 app.use(express.static(__dirname));
-app.use(express.json()); [cite: 75]
+app.use(express.json());
 
 const userSockets = {};
 
 app.post('/register', async (req, res) => {
-    const { username, password } = req.body;
-    const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
-    await new User({ username, tag, password }).save();
-    res.send({ status: 'ok', tag });
+    try {
+        const { username, password } = req.body;
+        const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
+        await new User({ username, tag, password }).save();
+        res.send({ status: 'ok', tag });
+    } catch(e) { res.send({ status: 'error' }); }
 });
 
 app.post('/login', async (req, res) => {
     const user = await User.findOne({ username: req.body.username, password: req.body.password });
     if (!user) return res.send({ status: 'error' });
     res.send({ status: 'ok', tag: user.tag });
-}); [cite: 76]
+});
 
+// ПОИСК ЧАТОВ И ГРУПП
 app.get('/my-chats/:tag', async (req, res) => {
     try {
         const messages = await Message.find({ room: { $regex: req.params.tag } });
@@ -60,11 +64,10 @@ app.get('/my-chats/:tag', async (req, res) => {
                 if (partner) partners.add(partner);
             }
         });
-        // Загружаем группы, где есть пользователь
         const groups = await Group.find({ members: req.params.tag });
         res.send({ partners: Array.from(partners), groups });
     } catch (e) { res.send({ partners: [], groups: [] }); }
-}); [cite: 77, 78]
+});
 
 app.post('/search-user', async (req, res) => {
     const user = await User.findOne({ tag: req.body.tag }, 'tag');
@@ -75,14 +78,14 @@ io.on('connection', (socket) => {
     socket.on('store-user', (tag) => { 
         userSockets[tag] = socket.id;
         socket.join('notify-' + tag);
-    }); [cite: 79]
+    });
 
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id && !r.startsWith('notify-')) socket.leave(r); });
         socket.join(room);
         const history = await Message.find({ room }).sort({ timestamp: 1 });
         socket.emit('chat history', history);
-    }); [cite: 80]
+    });
 
     socket.on('chat message', async (data) => {
         const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
@@ -90,18 +93,16 @@ io.on('connection', (socket) => {
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
 
         const partner = data.room.split('_').find(p => p !== data.sender);
-        if (partner) {
-            io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
-        }
-    }); [cite: 81]
+        if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
+    });
 
-    // СОБЫТИЕ УДАЛЕНИЯ
+    // УДАЛЕНИЕ СООБЩЕНИЙ
     socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
         io.emit('msg-deleted', id);
-    }); [cite: 82]
+    });
 
-    // СОБЫТИЯ ГРУПП
+    // СОЗДАНИЕ И ДОБАВЛЕНИЕ В ГРУППЫ
     socket.on('create-group', async (data) => {
         const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
         await group.save();
@@ -118,4 +119,6 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server OK'));
+// Render сам назначит PORT, но 3000 — хороший запасной вариант
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log('Server running on port ' + PORT));
