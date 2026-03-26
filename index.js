@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
-// ПОДКЛЮЧЕНИЕ К БД (Ошибка с ':' исправлена здесь)
+// Подключение к БД
 mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db')
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('DB Error:', err));
@@ -25,7 +25,7 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-// МОДЕЛЬ ГРУПП
+// Модель для групп
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     owner: String,
@@ -34,8 +34,6 @@ const Group = mongoose.model('Group', new mongoose.Schema({
 
 app.use(express.static(__dirname));
 app.use(express.json());
-
-const userSockets = {};
 
 app.post('/register', async (req, res) => {
     try {
@@ -48,11 +46,9 @@ app.post('/register', async (req, res) => {
 
 app.post('/login', async (req, res) => {
     const user = await User.findOne({ username: req.body.username, password: req.body.password });
-    if (!user) return res.send({ status: 'error' });
-    res.send({ status: 'ok', tag: user.tag });
+    res.send(user ? { status: 'ok', tag: user.tag } : { status: 'error' });
 });
 
-// ПОИСК ЧАТОВ И ГРУПП
 app.get('/my-chats/:tag', async (req, res) => {
     try {
         const messages = await Message.find({ room: { $regex: req.params.tag } });
@@ -75,10 +71,7 @@ app.post('/search-user', async (req, res) => {
 });
 
 io.on('connection', (socket) => {
-    socket.on('store-user', (tag) => { 
-        userSockets[tag] = socket.id;
-        socket.join('notify-' + tag);
-    });
+    socket.on('store-user', (tag) => { socket.join('notify-' + tag); });
 
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id && !r.startsWith('notify-')) socket.leave(r); });
@@ -91,18 +84,15 @@ io.on('connection', (socket) => {
         const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
-
         const partner = data.room.split('_').find(p => p !== data.sender);
         if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
     });
 
-    // УДАЛЕНИЕ СООБЩЕНИЙ
     socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
         io.emit('msg-deleted', id);
     });
 
-    // СОЗДАНИЕ И ДОБАВЛЕНИЕ В ГРУППЫ
     socket.on('create-group', async (data) => {
         const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
         await group.save();
@@ -119,6 +109,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Render сам назначит PORT, но 3000 — хороший запасной вариант
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server running on port ' + PORT));
+// КРИТИЧЕСКИЙ ФИКС ПОРТА ДЛЯ RENDER
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, '0.0.0.0', () => console.log('Сервер запущен на порту ' + PORT));
