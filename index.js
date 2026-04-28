@@ -7,11 +7,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
-// Подключение к БД
-mongoose.connect('mongodb+srv://felak:Felak22113d@chatdb.sf9erka.mongodb.net/chat_db')
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log('DB Error:', err));
+// ПОДКЛЮЧЕНИЕ К ТВОЕЙ БАЗЕ
+mongoose.connect('mongodb+srv://felak:Felak22113d@cluster0.sf9erka.mongodb.net/chat_db', {
+    serverSelectionTimeoutMS: 5000
+})
+.then(() => console.log('✅ База подключена успешно'))
+.catch(err => console.log('❌ Ошибка базы:', err.message));
 
+// МОДЕЛИ ДАННЫХ
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, required: true },
     tag: { type: String, unique: true }, 
@@ -25,7 +28,6 @@ const Message = mongoose.model('Message', new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }));
 
-// Модель для групп
 const Group = mongoose.model('Group', new mongoose.Schema({
     name: String,
     owner: String,
@@ -35,6 +37,7 @@ const Group = mongoose.model('Group', new mongoose.Schema({
 app.use(express.static(__dirname));
 app.use(express.json());
 
+// API (РЕГИСТРАЦИЯ И ВХОД)
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -49,7 +52,8 @@ app.post('/login', async (req, res) => {
     res.send(user ? { status: 'ok', tag: user.tag } : { status: 'error' });
 });
 
-app.get('/my-chats/:tag', async (req, res) => {
+// ЗАГРУЗКА ЧАТОВ И ГРУПП ДЛЯ СПИСКА СЛЕВА
+app.get('/my-sidebar/:tag', async (req, res) => {
     try {
         const messages = await Message.find({ room: { $regex: req.params.tag } });
         const partners = new Set();
@@ -70,6 +74,7 @@ app.post('/search-user', async (req, res) => {
     res.send(user || { status: 'not_found' });
 });
 
+// СОКЕТЫ (ЛОГИКА ЧАТА)
 io.on('connection', (socket) => {
     socket.on('store-user', (tag) => { socket.join('notify-' + tag); });
 
@@ -84,19 +89,23 @@ io.on('connection', (socket) => {
         const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
+        
+        // Уведомление для партнера
         const partner = data.room.split('_').find(p => p !== data.sender);
         if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
     });
 
+    // УДАЛЕНИЕ СООБЩЕНИЙ
     socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
         io.emit('msg-deleted', id);
     });
 
+    // ГРУППЫ
     socket.on('create-group', async (data) => {
         const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
         await group.save();
-        io.to('notify-' + data.owner).emit('new-chat-notification', { from: 'system' });
+        io.to('notify-' + data.owner).emit('new-chat-notification');
     });
 
     socket.on('add-to-group', async (data) => {
@@ -104,11 +113,10 @@ io.on('connection', (socket) => {
         if(group && !group.members.includes(data.tag)) {
             group.members.push(data.tag);
             await group.save();
-            io.to('notify-' + data.tag).emit('new-chat-notification', { from: 'system' });
+            io.to('notify-' + data.tag).emit('new-chat-notification');
         }
     });
 });
 
-// КРИТИЧЕСКИЙ ФИКС ПОРТА ДЛЯ RENDER
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, '0.0.0.0', () => console.log('Сервер запущен на порту ' + PORT));
+server.listen(PORT, '0.0.0.0', () => console.log('🚀 Сервер запущен на порту ' + PORT));
