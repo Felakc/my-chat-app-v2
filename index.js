@@ -5,44 +5,34 @@ const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 1e7 });
+const io = new Server(server);
 
-// ПОДКЛЮЧЕНИЕ К БАЗЕ
+// Подключаемся к твоей базе (она уже работает, судя по логам!)
 mongoose.connect('mongodb+srv://felak:Felak22113d@cluster0.sf9erka.mongodb.net/chat_db')
-    .then(() => console.log('✅ База подключена успешно'))
-    .catch(err => console.log('❌ Ошибка БД:', err));
-
-// МОДЕЛИ
-const User = mongoose.model('User', new mongoose.Schema({
-    username: { type: String, required: true },
-    tag: { type: String, unique: true }, 
-    password: { type: String, required: true }
-}));
+    .then(() => console.log('MongoDB Connected'))
+    .catch(err => console.log('DB Error:', err));
 
 const Message = mongoose.model('Message', new mongoose.Schema({
-    room: String, 
+    room: String,
     username: String,
     text: String,
     timestamp: { type: Date, default: Date.now }
 }));
 
-const Group = mongoose.model('Group', new mongoose.Schema({
-    name: String,
-    owner: String,
-    members: [String]
+const User = mongoose.model('User', new mongoose.Schema({
+    username: String,
+    tag: { type: String, unique: true },
+    password: String
 }));
 
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// API
 app.post('/register', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
-        await new User({ username, tag, password }).save();
-        res.send({ status: 'ok', tag });
-    } catch(e) { res.send({ status: 'error' }); }
+    const { username, password } = req.body;
+    const tag = `${username}#${Math.floor(1000 + Math.random() * 9000)}`;
+    await new User({ username, tag, password }).save();
+    res.send({ status: 'ok', tag });
 });
 
 app.post('/login', async (req, res) => {
@@ -50,32 +40,8 @@ app.post('/login', async (req, res) => {
     res.send(user ? { status: 'ok', tag: user.tag } : { status: 'error' });
 });
 
-// ПОЛУЧЕНИЕ СПИСКА ЧАТОВ
-app.get('/my-chats/:tag', async (req, res) => {
-    const messages = await Message.find({ room: { $regex: req.params.tag } });
-    const partners = new Set();
-    messages.forEach(m => {
-        const parts = m.room.split('_');
-        if (parts.length === 2) {
-            const partner = parts.find(p => p !== req.params.tag);
-            if (partner) partners.add(partner);
-        }
-    });
-    const groups = await Group.find({ members: req.params.tag });
-    res.send({ partners: Array.from(partners), groups });
-});
-
-app.post('/search-user', async (req, res) => {
-    const user = await User.findOne({ tag: req.body.tag }, 'tag');
-    res.send(user || { status: 'not_found' });
-});
-
-// СОКЕТЫ
 io.on('connection', (socket) => {
-    socket.on('store-user', (tag) => socket.join('notify-' + tag));
-
     socket.on('join room', async (room) => {
-        socket.rooms.forEach(r => { if(r !== socket.id && !r.startsWith('notify-')) socket.leave(r); });
         socket.join(room);
         const history = await Message.find({ room }).sort({ timestamp: 1 });
         socket.emit('chat history', history);
@@ -85,24 +51,14 @@ io.on('connection', (socket) => {
         const msg = new Message({ room: data.room, username: data.sender, text: data.msg });
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
-        
-        const partner = data.room.split('_').find(p => p !== data.sender);
-        if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
     });
 
-    // УДАЛЕНИЕ
+    // Удаление сообщений
     socket.on('delete-msg', async (id) => {
         await Message.findByIdAndDelete(id);
         io.emit('msg-deleted', id);
     });
-
-    // СОЗДАНИЕ ГРУППЫ
-    socket.on('create-group', async (data) => {
-        const group = new Group({ name: data.name, owner: data.owner, members: [data.owner] });
-        await group.save();
-        io.to('notify-' + data.owner).emit('new-chat-notification', { from: 'system' });
-    });
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, '0.0.0.0', () => console.log('🚀 Сервер на порту ' + PORT));ы
+server.listen(PORT, '0.0.0.0', () => console.log('Server started on port ' + PORT));

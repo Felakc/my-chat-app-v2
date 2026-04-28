@@ -2,128 +2,90 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Messenger Stable</title>
+    <title>Chat</title>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; background: #eee; }
-        #auth-screen { position: fixed; inset: 0; background: white; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #sidebar { width: 250px; background: #fff; border-right: 1px solid #ccc; display: flex; flex-direction: column; }
-        #chat-area { flex: 1; display: flex; flex-direction: column; }
-        #messages { flex: 1; overflow-y: auto; padding: 10px; background: #fff; }
-        .msg { margin: 5px; padding: 10px; background: #f1f1f1; border-radius: 5px; width: fit-content; max-width: 80%; }
-        .msg.me { background: #0084ff; color: white; align-self: flex-end; margin-left: auto; }
-        .del-btn { color: red; cursor: pointer; margin-left: 10px; font-size: 12px; }
-        #input-area { padding: 10px; display: flex; background: #ddd; }
-        #m-input { flex: 1; padding: 10px; }
-        .user-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        body { font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
+        #auth { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        #sidebar { width: 200px; border-right: 1px solid #ccc; padding: 10px; }
+        #main { flex: 1; display: flex; flex-direction: column; }
+        #messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; }
+        .msg { margin: 5px; padding: 8px; background: #eee; border-radius: 5px; width: fit-content; }
+        .me { align-self: flex-end; background: #0084ff; color: white; }
+        .del { color: red; cursor: pointer; margin-left: 10px; font-size: 10px; }
     </style>
 </head>
 <body>
 
-<div id="auth-screen">
-    <div style="width: 250px;">
-        <h2>Вход</h2>
-        <input type="text" id="u-name" placeholder="Логин" style="width:100%; margin-bottom:5px;">
-        <input type="password" id="u-pass" placeholder="Пароль" style="width:100%; margin-bottom:5px;">
-        <button onclick="auth('login')" style="width:100%;">Войти</button>
-        <button onclick="auth('register')" style="width:100%; margin-top:5px;">Регистрация</button>
-    </div>
+<div id="auth">
+    <h2>Вход</h2>
+    <input type="text" id="u" placeholder="Логин"><br>
+    <input type="password" id="p" placeholder="Пароль"><br>
+    <button onclick="login()">Войти</button>
 </div>
 
 <div id="sidebar">
-    <div style="padding:10px; background:#0084ff; color:white;">
-        <b>Мессенджер</b>
-        <button onclick="createGrp()" style="font-size:10px;">+ Группа</button>
-    </div>
-    <div id="my-tag" style="font-size:10px; padding:5px; text-align:center;"></div>
-    <div style="padding:5px; display:flex;">
-        <input type="text" id="search-tag" placeholder="Имя#1234" style="width:70%;">
-        <button onclick="findU()">🔍</button>
-    </div>
-    <div id="user-list"></div>
+    <b>Ваш ID:</b> <span id="mytag"></span><br><br>
+    <input type="text" id="target" placeholder="Кому (Имя#1234)">
+    <button onclick="startChat()">Чат</button>
 </div>
 
-<div id="chat-area">
-    <div id="chat-title" style="padding:10px; border-bottom:1px solid #ccc; font-weight:bold;">Выберите чат</div>
+<div id="main">
     <div id="messages"></div>
-    <div id="input-area">
-        <input type="text" id="m-input" placeholder="Сообщение...">
-        <button onclick="send()">></button>
+    <div style="padding: 10px; display: flex;">
+        <input type="text" id="m" style="flex: 1;">
+        <button onclick="send()">Отправить</button>
     </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    let myTag = '', currentRoom = '';
+    let myTag = '', room = '';
 
-    async function auth(type) {
-        const u = document.getElementById('u-name').value;
-        const p = document.getElementById('u-pass').value;
-        const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
+    async function login() {
+        const res = await fetch('/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: u.value, password: p.value})
+        });
         const data = await res.json();
-        if(data.status==='ok') {
+        if(data.status === 'ok') {
             myTag = data.tag;
-            document.getElementById('my-tag').innerText = myTag;
-            document.getElementById('auth-screen').style.display = 'none';
-            socket.emit('store-user', myTag);
-            loadSidebar();
+            mytag.innerText = myTag;
+            auth.style.display = 'none';
         } else { alert("Ошибка!"); }
     }
 
-    async function loadSidebar() {
-        const res = await fetch('/my-chats/'+myTag);
-        const data = await res.json();
-        const list = document.getElementById('user-list');
-        list.innerHTML = '';
-        data.partners.forEach(p => list.innerHTML += `<div class="user-item" onclick="openChat('${p}')">👤 ${p}</div>`);
-        data.groups.forEach(g => list.innerHTML += `<div class="user-item" onclick="openChat('${g._id}', '${g.name}')">👥 ${g.name}</div>`);
-    }
-
-    function openChat(id, name) {
-        currentRoom = id.includes('#') ? [myTag, id].sort().join('_') : id;
-        document.getElementById('chat-title').innerText = name || id;
-        document.getElementById('messages').innerHTML = '';
-        socket.emit('join room', currentRoom);
+    function startChat() {
+        room = [myTag, target.value].sort().join('_');
+        messages.innerHTML = '';
+        socket.emit('join room', room);
     }
 
     function send() {
-        const msg = document.getElementById('m-input').value;
-        if(msg && currentRoom) {
-            socket.emit('chat message', { room: currentRoom, msg, sender: myTag });
-            document.getElementById('m-input').value = '';
+        if(m.value && room) {
+            socket.emit('chat message', { room, msg: m.value, sender: myTag });
+            m.value = '';
         }
     }
-
-    async function findU() {
-        const tag = document.getElementById('search-tag').value;
-        const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
-        const data = await res.json();
-        if(data.tag) openChat(data.tag); else alert("Не найден!");
-    }
-
-    function createGrp() {
-        const name = prompt("Название группы:");
-        if(name) socket.emit('create-group', { name, owner: myTag });
-    }
-
-    socket.on('chat message', d => render(d));
-    socket.on('chat history', h => h.forEach(render));
-    socket.on('msg-deleted', id => document.getElementById('msg-'+id)?.remove());
-    socket.on('new-chat-notification', loadSidebar);
 
     function render(d) {
-        if(document.getElementById('msg-'+(d._id || d.id))) return;
+        const id = d._id || d.id;
+        if(document.getElementById(id)) return;
         const div = document.createElement('div');
-        div.id = 'msg-' + (d._id || d.id);
+        div.id = id;
         div.className = 'msg ' + ((d.sender || d.username) === myTag ? 'me' : '');
-        div.innerHTML = `<b>${d.sender || d.username}</b>: ${d.msg || d.text}`;
+        div.innerHTML = `<b>${d.sender || d.username}:</b> ${d.msg || d.text}`;
         if((d.sender || d.username) === myTag) {
-            div.innerHTML += ` <span class="del-btn" onclick="socket.emit('delete-msg', '${d._id || d.id}')">🗑️</span>`;
+            div.innerHTML += ` <span class="del" onclick="socket.emit('delete-msg', '${id}')">🗑️</span>`;
         }
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = 99999;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
     }
+
+    socket.on('chat message', render);
+    socket.on('chat history', h => h.forEach(render));
+    socket.on('msg-deleted', id => document.getElementById(id)?.remove());
 </script>
 </body>
 </html>
