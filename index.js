@@ -7,37 +7,28 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
-// ПОДКЛЮЧЕНИЕ К ТВОЕЙ БАЗЕ
+// 1. ПОДКЛЮЧЕНИЕ К БАЗЕ (Исправлено для стабильности)
 mongoose.connect('mongodb+srv://felak:Felak22113d@cluster0.sf9erka.mongodb.net/chat_db', {
     serverSelectionTimeoutMS: 5000
 })
 .then(() => console.log('✅ База подключена успешно'))
-.catch(err => console.log('❌ Ошибка базы:', err.message));
+.catch(err => console.log('❌ Ошибка БД:', err.message));
 
-// МОДЕЛИ ДАННЫХ
+// 2. МОДЕЛИ ДАННЫХ
 const User = mongoose.model('User', new mongoose.Schema({
-    username: { type: String, required: true },
-    tag: { type: String, unique: true }, 
-    password: { type: String, required: true }
+    username: String, tag: { type: String, unique: true }, password: String
 }));
-
 const Message = mongoose.model('Message', new mongoose.Schema({
-    room: String, 
-    username: String,
-    text: String,
-    timestamp: { type: Date, default: Date.now }
+    room: String, username: String, text: String, timestamp: { type: Date, default: Date.now }
 }));
-
 const Group = mongoose.model('Group', new mongoose.Schema({
-    name: String,
-    owner: String,
-    members: [String]
+    name: String, owner: String, members: [String]
 }));
 
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// API (РЕГИСТРАЦИЯ И ВХОД)
+// 3. API (Вход, Регистрация, Поиск)
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -52,19 +43,21 @@ app.post('/login', async (req, res) => {
     res.send(user ? { status: 'ok', tag: user.tag } : { status: 'error' });
 });
 
-// ЗАГРУЗКА ЧАТОВ И ГРУПП ДЛЯ СПИСКА СЛЕВА
 app.get('/my-sidebar/:tag', async (req, res) => {
     try {
-        const messages = await Message.find({ room: { $regex: req.params.tag } });
+        const myTag = req.params.tag;
+        // Ищем уникальных собеседников
+        const messages = await Message.find({ room: { $regex: myTag } });
         const partners = new Set();
         messages.forEach(m => {
             const parts = m.room.split('_');
             if (parts.length === 2) {
-                const partner = parts.find(p => p !== req.params.tag);
+                const partner = parts.find(p => p !== myTag);
                 if (partner) partners.add(partner);
             }
         });
-        const groups = await Group.find({ members: req.params.tag });
+        // Ищем группы, в которых состоит пользователь
+        const groups = await Group.find({ members: myTag });
         res.send({ partners: Array.from(partners), groups });
     } catch (e) { res.send({ partners: [], groups: [] }); }
 });
@@ -74,9 +67,9 @@ app.post('/search-user', async (req, res) => {
     res.send(user || { status: 'not_found' });
 });
 
-// СОКЕТЫ (ЛОГИКА ЧАТА)
+// 4. ЛОГИКА ЧАТА (Socket.io)
 io.on('connection', (socket) => {
-    socket.on('store-user', (tag) => { socket.join('notify-' + tag); });
+    socket.on('store-user', (tag) => socket.join('notify-' + tag));
 
     socket.on('join room', async (room) => {
         socket.rooms.forEach(r => { if(r !== socket.id && !r.startsWith('notify-')) socket.leave(r); });
@@ -90,7 +83,7 @@ io.on('connection', (socket) => {
         const saved = await msg.save();
         io.to(data.room).emit('chat message', { ...data, _id: saved._id });
         
-        // Уведомление для партнера
+        // Уведомление для партнера о новом сообщении
         const partner = data.room.split('_').find(p => p !== data.sender);
         if (partner) io.to('notify-' + partner).emit('new-chat-notification', { from: data.sender });
     });
@@ -118,5 +111,6 @@ io.on('connection', (socket) => {
     });
 });
 
+// КРИТИЧЕСКИЙ ФИКС ДЛЯ RENDER
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => console.log('🚀 Сервер запущен на порту ' + PORT));

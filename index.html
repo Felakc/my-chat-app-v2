@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Chat App</title>
+    <title>Messenger Pro</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; overflow: hidden; }
@@ -16,17 +16,19 @@
         .del-btn { color: red; cursor: pointer; float: right; font-size: 10px; margin-left: 8px; opacity: 0.5; }
         #input-area { padding: 15px; display: flex; background: white; gap: 10px; }
         #m-input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
-        .item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
+        .item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .item:hover { background: #f9f9f9; }
     </style>
 </head>
 <body>
+
 <div id="auth-screen">
     <div id="auth-box">
         <h2>Messenger</h2>
-        <input type="text" id="u-name" placeholder="Логин" style="width:100%; margin-bottom:10px; padding:10px;">
-        <input type="password" id="u-pass" placeholder="Пароль" style="width:100%; margin-bottom:10px; padding:10px;">
-        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px;">Войти</button>
-        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Регистрация</button>
+        <input type="text" id="u-name" placeholder="Логин" style="width:100%; padding:10px; margin-bottom:10px;">
+        <input type="password" id="u-pass" placeholder="Пароль" style="width:100%; padding:10px; margin-bottom:10px;">
+        <button onclick="auth('login')" style="width:100%; padding:10px; background:#0084ff; color:white; border:none; border-radius:8px; cursor:pointer;">Войти</button>
+        <button onclick="auth('register')" style="margin-top:10px; background:none; border:none; color:green; cursor:pointer;">Создать аккаунт</button>
     </div>
 </div>
 
@@ -35,19 +37,23 @@
         <b>Чаты</b>
         <button onclick="createGroup()" style="font-size:10px; background:none; border:1px solid white; color:white; cursor:pointer;">+ Группа</button>
     </div>
-    <div id="my-tag" style="padding:10px; text-align:center; font-size:12px; background:#f0f7ff;">ID: ...</div>
+    <div id="my-tag" style="padding:10px; font-size:11px; text-align:center; background:#f8f9fa; border-bottom:1px solid #eee;">ID: ...</div>
+    <div style="padding:10px; display:flex; gap:5px;">
+        <input type="text" id="search-inp" placeholder="Имя#1234" style="flex:1;">
+        <button onclick="findUser()">🔍</button>
+    </div>
     <div id="user-list" style="flex:1; overflow-y:auto;"></div>
 </div>
 
 <div style="flex:1; display:flex; flex-direction:column;">
-    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; font-weight:bold; display:flex; justify-content:space-between;">
+    <div id="chat-header" style="padding:15px; background:white; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; font-weight:bold;">
         <span id="chat-title">Выберите чат</span>
-        <button id="add-btn" style="display:none; font-size:10px;" onclick="addMember()">+ Добавить</button>
+        <button id="add-btn" style="display:none; font-size:10px;" onclick="addMember()">+ Пригласить</button>
     </div>
     <div id="messages"></div>
     <div id="input-area">
-        <input type="text" id="m-input" placeholder="Введите сообщение..." autocomplete="off">
-        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px;">></button>
+        <input type="text" id="m-input" placeholder="Сообщение..." autocomplete="off">
+        <button onclick="send()" style="padding:10px 20px; background:#0084ff; color:white; border:none; border-radius:20px; cursor:pointer;">></button>
     </div>
 </div>
 
@@ -59,14 +65,22 @@
     async function auth(type) {
         const u = document.getElementById('u-name').value;
         const p = document.getElementById('u-pass').value;
-        const res = await fetch('/'+type, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
+        if(!u || !p) return alert("Заполните поля");
+
+        const res = await fetch('/'+type, {
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({username:u, password:p})
+        });
         const data = await res.json();
-        if(data.status==='ok') {
+        if(data.status==='ok' || data.tag) {
             myTag = data.tag;
             document.getElementById('my-tag').innerText = "Ваш ID: " + myTag;
             document.getElementById('auth-screen').remove();
             socket.emit('store-user', myTag);
             loadSidebar();
+        } else {
+            alert("Ошибка входа/регистрации. Возможно, сервер просыпается, подождите 1 минуту.");
         }
     }
 
@@ -113,13 +127,20 @@
         document.getElementById('messages').scrollTop = 99999;
     }
 
+    async function findUser() {
+        const tag = document.getElementById('search-inp').value.trim();
+        const res = await fetch('/search-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tag})});
+        const data = await res.json();
+        if(data.tag) { openChat(data.tag, false); } else { alert("Пользователь не найден"); }
+    }
+
     function createGroup() {
         const name = prompt("Название группы:");
         if(name) socket.emit('create-group', { name, owner: myTag });
     }
 
     function addMember() {
-        const tag = prompt("Введите ID участника (Имя#1234):");
+        const tag = prompt("Введите ID (Имя#1234):");
         if(tag) socket.emit('add-to-group', { groupId: currentRoom, tag });
     }
 
